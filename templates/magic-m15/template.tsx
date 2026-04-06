@@ -140,6 +140,13 @@ export default function M15Template({ fields: rawFields, assetsPath }: TemplateP
         width={ART_W}
         height={ART_H}
         src={fields.art ?? null}
+        onImageStatusChange={(status) => {
+          window.dispatchEvent(
+            new CustomEvent('card-draft:image-status', {
+              detail: status,
+            }),
+          )
+        }}
       />
 
       {/* Frame overlay (SVG art frame, drawn on top of art) */}

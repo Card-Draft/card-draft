@@ -53,4 +53,22 @@ export function registerTemplateHandlers() {
     const result = await dialog.showOpenDialog({ properties: ['openDirectory'] })
     return result.canceled ? null : (result.filePaths[0] ?? null)
   })
+
+  ipcMain.handle('dialog:readFileAsDataUrl', (_e, filePath: string) => {
+    const bytes = readFileSync(filePath)
+    const ext = filePath.split('.').pop()?.toLowerCase()
+
+    const mimeType =
+      ext === 'png'
+        ? 'image/png'
+        : ext === 'jpg' || ext === 'jpeg'
+          ? 'image/jpeg'
+          : ext === 'webp'
+            ? 'image/webp'
+            : ext === 'gif'
+              ? 'image/gif'
+              : 'application/octet-stream'
+
+    return `data:${mimeType};base64,${bytes.toString('base64')}`
+  })
 }

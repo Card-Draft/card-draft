@@ -34,6 +34,7 @@ export function CardCanvas() {
   const isDirty = useEditorStore((s) => s.isDirty)
   const setZoom = useUiStore((s) => s.setZoom)
   const setPreviewFitScale = useUiStore((s) => s.setPreviewFitScale)
+  const setImageLoadError = useUiStore((s) => s.setImageLoadError)
   const [fitScale, setFitScale] = useState(1)
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 })
 
@@ -56,6 +57,17 @@ export function CardCanvas() {
     globalStageRef = stageRef.current
     return () => { globalStageRef = null }
   }, [stageRef.current])
+
+  useEffect(() => {
+    const handleImageStatus = (event: Event) => {
+      const customEvent = event as CustomEvent<{ error: string | null }>
+      setImageLoadError(customEvent.detail?.error ?? null)
+    }
+
+    window.addEventListener('card-draft:image-status', handleImageStatus as EventListener)
+    return () =>
+      window.removeEventListener('card-draft:image-status', handleImageStatus as EventListener)
+  }, [setImageLoadError])
 
   useEffect(() => {
     const viewport = viewportRef.current

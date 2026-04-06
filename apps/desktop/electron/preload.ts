@@ -39,6 +39,7 @@ function makeApi(): IpcApi {
     dialog: {
       openFile: (options) => ipcRenderer.invoke('dialog:openFile', options),
       openFolder: () => ipcRenderer.invoke('dialog:openFolder'),
+      readFileAsDataUrl: (path) => ipcRenderer.invoke('dialog:readFileAsDataUrl', path),
     },
   }
 }

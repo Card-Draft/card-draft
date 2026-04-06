@@ -1,3 +1,4 @@
+import React from 'react'
 import { Image, Rect } from 'react-konva'
 import useImage from 'use-image'
 
@@ -12,11 +13,48 @@ interface ArtBoxProps {
   cropY?: number
   cropWidth?: number
   cropHeight?: number
+  onImageStatusChange?: (status: { src: string | null; loaded: boolean; error: string | null }) => void
 }
 
-export function ArtBox({ x, y, width, height, src, cropX = 0, cropY = 0, cropWidth = 1, cropHeight = 1 }: ArtBoxProps) {
+export function ArtBox({
+  x,
+  y,
+  width,
+  height,
+  src,
+  cropX = 0,
+  cropY = 0,
+  cropWidth = 1,
+  cropHeight = 1,
+  onImageStatusChange,
+}: ArtBoxProps) {
   const crossOrigin = src?.startsWith('file://') ? undefined : 'anonymous'
-  const [image] = useImage(src ?? '', crossOrigin)
+  const [image, status] = useImage(src ?? '', crossOrigin)
+
+  React.useEffect(() => {
+    if (!onImageStatusChange) return
+
+    if (!src) {
+      onImageStatusChange({ src: null, loaded: false, error: null })
+      return
+    }
+
+    if (status === 'loaded' && image) {
+      onImageStatusChange({ src, loaded: true, error: null })
+      return
+    }
+
+    if (status === 'failed') {
+      onImageStatusChange({
+        src,
+        loaded: false,
+        error: `Failed to load image: ${src}`,
+      })
+      return
+    }
+
+    onImageStatusChange({ src, loaded: false, error: null })
+  }, [image, onImageStatusChange, src, status])
 
   if (!image) {
     // Placeholder when no art loaded

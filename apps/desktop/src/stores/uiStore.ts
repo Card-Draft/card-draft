@@ -5,6 +5,7 @@ interface UiState {
   rightPanelOpen: boolean
   zoom: number
   previewFitScale: number
+  imageLoadError: string | null
   newSetDialogOpen: boolean
   exportDialogOpen: boolean
   importMseDialogOpen: boolean
@@ -13,6 +14,7 @@ interface UiState {
   toggleRightPanel: () => void
   setZoom: (zoom: number) => void
   setPreviewFitScale: (fitScale: number) => void
+  setImageLoadError: (error: string | null) => void
   openNewSetDialog: () => void
   closeNewSetDialog: () => void
   openExportDialog: () => void
@@ -26,6 +28,7 @@ export const useUiStore = create<UiState>((set) => ({
   rightPanelOpen: true,
   zoom: 1,
   previewFitScale: 1,
+  imageLoadError: null,
   newSetDialogOpen: false,
   exportDialogOpen: false,
   importMseDialogOpen: false,
@@ -34,6 +37,7 @@ export const useUiStore = create<UiState>((set) => ({
   toggleRightPanel: () => set((s) => ({ rightPanelOpen: !s.rightPanelOpen })),
   setZoom: (zoom) => set({ zoom }),
   setPreviewFitScale: (previewFitScale) => set({ previewFitScale }),
+  setImageLoadError: (imageLoadError) => set({ imageLoadError }),
   openNewSetDialog: () => set({ newSetDialogOpen: true }),
   closeNewSetDialog: () => set({ newSetDialogOpen: false }),
   openExportDialog: () => set({ exportDialogOpen: true }),

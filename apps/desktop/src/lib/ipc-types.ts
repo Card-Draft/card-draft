@@ -56,6 +56,7 @@ export interface IpcApi {
   dialog: {
     openFile: (options: { filters?: Electron.FileFilter[] }) => Promise<string | null>
     openFolder: () => Promise<string | null>
+    readFileAsDataUrl: (path: string) => Promise<string>
   }
 }
 

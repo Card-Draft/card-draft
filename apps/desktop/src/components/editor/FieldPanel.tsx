@@ -8,8 +8,8 @@
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { useEditorStore } from '../../stores/editorStore'
+import { useUiStore } from '../../stores/uiStore'
 import { getDefaultFieldValues, getMergedFieldValues } from '../../lib/cardFields'
-import { toFileUrl } from '../../lib/utils'
 
 // The M15 manifest inline — Phase 2 loads this dynamically from the template
 import manifest from '@card-draft/templates/magic-m15/manifest.json'
@@ -22,6 +22,7 @@ interface FieldPanelProps {
 export function FieldPanel({ cardId }: FieldPanelProps) {
   const fieldValues = useEditorStore((s) => s.fieldValues)
   const setFieldValue = useEditorStore((s) => s.setFieldValue)
+  const isDirty = useEditorStore((s) => s.isDirty)
   const initialValues = getMergedFieldValues(fieldValues)
 
   const { register, reset, watch } = useForm<Record<string, string>>({
@@ -30,8 +31,10 @@ export function FieldPanel({ cardId }: FieldPanelProps) {
 
   // Reset form when card changes
   useEffect(() => {
-    reset(initialValues)
-  }, [cardId, initialValues, reset])
+    if (!isDirty) {
+      reset(initialValues)
+    }
+  }, [cardId, initialValues, isDirty, reset])
 
   // Sync form → store on every change
   useEffect(() => {
@@ -112,13 +115,17 @@ export function FieldPanel({ cardId }: FieldPanelProps) {
 function ImageField({ fieldId }: { fieldId: string }) {
   const setFieldValue = useEditorStore((s) => s.setFieldValue)
   const value = useEditorStore((s) => s.fieldValues[fieldId]) ?? ''
+  const imageLoadError = useUiStore((s) => s.imageLoadError)
+  const setImageLoadError = useUiStore((s) => s.setImageLoadError)
 
   const handlePick = async () => {
     const path = await window.api.dialog.openFile({
       filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }],
     })
     if (path) {
-      setFieldValue(fieldId, toFileUrl(path))
+      const dataUrl = await window.api.dialog.readFileAsDataUrl(path)
+      setImageLoadError(null)
+      setFieldValue(fieldId, dataUrl)
     }
   }
 
@@ -132,11 +139,19 @@ function ImageField({ fieldId }: { fieldId: string }) {
             className="w-full h-32 object-cover rounded border border-zinc-700"
           />
           <button
-            onClick={() => setFieldValue(fieldId, '')}
+            onClick={() => {
+              setImageLoadError(null)
+              setFieldValue(fieldId, '')
+            }}
             className="absolute top-1 right-1 bg-zinc-900/80 text-zinc-400 hover:text-red-400 rounded px-1.5 py-0.5 text-xs"
           >
             Remove
           </button>
+        </div>
+      ) : null}
+      {imageLoadError && value ? (
+        <div className="rounded-md border border-red-900/60 bg-red-950/40 px-3 py-2 text-xs text-red-200">
+          {imageLoadError}
         </div>
       ) : null}
       <button
