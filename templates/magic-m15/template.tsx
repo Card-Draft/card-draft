@@ -1,15 +1,22 @@
 /**
  * Magic M15 frame template component.
  *
- * Canvas coordinate space: 744 × 1039 px (logical, @ 100ppi = 2.5" × 3.5")
- * All positions are in these logical pixels.
+ * Canvas coordinate space: 744 × 1039 px (logical, @ ~96ppi = 2.5" × 3.5")
  *
- * Phase 1 frames are geometric SVG placeholders in the correct M15 proportions.
- * Community contributors can replace the SVG assets with pixel-perfect artwork.
+ * Layout is driven by the frame SVG assets (frame-{color}.svg).
+ * The frame SVG is rendered first as the base layer, then art is composited
+ * into the art window, then text elements are drawn on top.
+ *
+ * Frame SVG regions (px):
+ *   Name bar:  x=30  y=30   w=684 h=64
+ *   Art:       x=35  y=109  w=674 h=458  (inner; outer border x=30 y=104)
+ *   Type bar:  x=30  y=580  w=684 h=44
+ *   Text box:  x=30  y=632  w=684 h=330
+ *   P/T box:   x=618 y=940  w=96  h=46
  */
 
 import { useCallback, useEffect } from 'react'
-import { Group, Rect, Image as KonvaImage, Text } from 'react-konva'
+import { Group, Image as KonvaImage, Text } from 'react-konva'
 import useImage from 'use-image'
 import type { TemplateProps } from '@card-draft/template-runtime'
 import {
@@ -25,52 +32,24 @@ import {
   isLand,
   frameColor,
   typeLine,
-  FRAME_COLORS,
   RARITY_COLORS,
 } from './logic'
 
-// M15 card layout constants (in logical px)
-const BORDER = 24
 const CARD_W = 744
 const CARD_H = 1039
 
-// Art box
-const ART_X = 57
-const ART_Y = 104
-const ART_W = 630
-const ART_H = 462
+// These match the SVG frame regions exactly
+const NAME_BAR = { x: 30, y: 30, w: 684, h: 64 }
+const ART = { x: 35, y: 109, w: 674, h: 458 }
+const TYPE_BAR = { x: 30, y: 580, w: 684, h: 44 }
+const TEXT_BOX = { x: 30, y: 632, w: 684, h: 330 }
+const PT_BOX = { x: 618, y: 940, w: 96, h: 46 }
 
-// Name bar
-const NAME_X = 57
-const NAME_Y = 52
-const NAME_W = 560
+// Padding inside bars for text
+const BAR_PAD = 14
 
-// Mana cost (right side of name bar)
-const MANA_X = 620
-const MANA_Y = 52
-
-// Type line
-const TYPE_X = 57
-const TYPE_Y = 582
-const TYPE_W = 578
-
-// Rarity gem
-const RARITY_X = 680
-const RARITY_Y = 582
-
-// Text box
-const TEXTBOX_X = 57
-const TEXTBOX_Y = 614
-const TEXTBOX_W = 630
-const TEXTBOX_H = 322
-
-// P/T box
-const PT_X = 635
-const PT_Y = 960
-
-// Footer
-const FOOTER_Y = 1000
-const FOOTER_X = 57
+const TITLE_FONT = 'Georgia'
+const BODY_FONT = 'Georgia'
 
 interface AssetStatus {
   pending: boolean
@@ -91,27 +70,30 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max)
 }
 
-export default function M15Template({ fields: rawFields, assetsPath, onAssetStatusChange }: M15TemplateProps) {
-  const fields = rawFields
+export default function M15Template({ fields, assetsPath, onAssetStatusChange }: M15TemplateProps) {
   const color = frameColor(fields)
-  const frameHex = FRAME_COLORS[color]
   const rarityColor = RARITY_COLORS[fields.rarity] ?? RARITY_COLORS['common']!
   const creature = isCreature(fields)
   const land = isLand(fields)
   const typeLineText = typeLine(fields)
   const symbolsPath = `${assetsPath}/symbols`
+
   const cropWidth = clamp(parseFraction(fields.artCropWidth, 1), 0.05, 1)
   const cropHeight = clamp(parseFraction(fields.artCropHeight, 1), 0.05, 1)
   const cropX = clamp(parseFraction(fields.artCropX, 0), 0, 1 - cropWidth)
   const cropY = clamp(parseFraction(fields.artCropY, 0), 0, 1 - cropHeight)
 
-  // Load frame SVG (falls back to colored rect if not found)
+  // Text color: black cards use light text
+  const isDark = color === 'black'
+  const textFill = isDark ? '#e5e7eb' : '#1a1a1a'
+  const subtleFill = isDark ? '#9ca3af' : '#4b5563'
+
+  // Frame SVG — rendered as the base of the card
   const frameSrc = `${assetsPath}/frame-${color}.svg`
   const [frameImage, frameStatus] = useImage(frameSrc, 'anonymous')
 
   useEffect(() => {
     if (!onAssetStatusChange) return
-
     onAssetStatusChange({
       pending: frameStatus === 'loading' || Boolean(fields.art),
       error: frameStatus === 'failed' ? `Failed to load frame: ${frameSrc}` : null,
@@ -124,70 +106,46 @@ export default function M15Template({ fields: rawFields, assetsPath, onAssetStat
         pending: frameStatus === 'loading' || (Boolean(status.src) && !status.loaded && !status.error),
         error: status.error ?? (frameStatus === 'failed' ? `Failed to load frame: ${frameSrc}` : null),
       })
-
-      window.dispatchEvent(
-        new CustomEvent('card-draft:image-status', {
-          detail: status,
-        }),
-      )
+      window.dispatchEvent(new CustomEvent('card-draft:image-status', { detail: status }))
     },
     [frameSrc, frameStatus, onAssetStatusChange],
   )
 
+  // Mana cost symbols — right side of name bar
+  // Each symbol is ~30px wide; reserve space based on symbol count
+  const manaSymbolCount = (fields.manaCost?.match(/\{[^}]+\}/g) ?? []).length
+  const manaSymbolSize = 30
+  const manaWidth = Math.max(manaSymbolCount * (manaSymbolSize + 2), manaSymbolSize)
+  const nameTextWidth = NAME_BAR.w - BAR_PAD * 2 - manaWidth - 8
+  const manaX = NAME_BAR.x + NAME_BAR.w - BAR_PAD - manaWidth
+  const nameTextY = NAME_BAR.y + (NAME_BAR.h - 30) / 2  // vertically center 30px text
+  const typeTextY = TYPE_BAR.y + (TYPE_BAR.h - 24) / 2  // vertically center 24px text
+
   return (
     <Group listening={false}>
-      {/* Card border */}
-      <Rect
-        x={0}
-        y={0}
-        width={CARD_W}
-        height={CARD_H}
-        fill="#1a1205"
-        cornerRadius={18}
-      />
-
-      {/* Card background */}
-      <Rect
-        x={BORDER}
-        y={BORDER}
-        width={CARD_W - BORDER * 2}
-        height={CARD_H - BORDER * 2}
-        fill={frameHex}
-        cornerRadius={10}
-      />
-
-      {/* Name bar */}
-      <Rect x={NAME_X} y={NAME_Y - 8} width={NAME_W + 100} height={34} fill={frameHex} cornerRadius={4} />
-
-      {/* Card name */}
-      <TextField
-        x={NAME_X + 4}
-        y={NAME_Y - 4}
-        width={NAME_W}
-        text={fields.name || 'New Card'}
-        fontSize={20}
-        fontStyle="bold"
-        fill={color === 'black' ? '#e5e7eb' : '#1a1a1a'}
-      />
-
-      {/* Mana cost (right of name bar) */}
-      {!land && fields.manaCost && (
-        <ManaText
-          x={MANA_X}
-          y={NAME_Y - 4}
-          width={100}
-          text={fields.manaCost}
-          fontSize={16}
-          symbolBasePath={symbolsPath}
+      {/* 1. Frame SVG — provides card background, all bars, and borders */}
+      {frameImage ? (
+        <KonvaImage
+          x={0}
+          y={0}
+          width={CARD_W}
+          height={CARD_H}
+          image={frameImage}
+          listening={false}
         />
+      ) : (
+        /* Fallback while frame loads: plain dark card */
+        <>
+          <Text x={20} y={20} text="Loading frame…" fontSize={14} fill="#888" listening={false} />
+        </>
       )}
 
-      {/* Art box */}
+      {/* 2. Art — composited into the art window */}
       <ArtBox
-        x={ART_X}
-        y={ART_Y}
-        width={ART_W}
-        height={ART_H}
+        x={ART.x}
+        y={ART.y}
+        width={ART.w}
+        height={ART.h}
         src={fields.art ?? null}
         cropX={cropX}
         cropY={cropY}
@@ -196,78 +154,104 @@ export default function M15Template({ fields: rawFields, assetsPath, onAssetStat
         onImageStatusChange={handleImageStatusChange}
       />
 
-      {/* Frame overlay (SVG art frame, drawn on top of art) */}
-      {frameImage && (
-        <KonvaImage
-          x={BORDER}
-          y={BORDER}
-          width={CARD_W - BORDER * 2}
-          height={CARD_H - BORDER * 2}
-          image={frameImage}
-          listening={false}
+      {/* 3. Card name */}
+      <TextField
+        x={NAME_BAR.x + BAR_PAD}
+        y={nameTextY}
+        width={nameTextWidth}
+        text={fields.name || 'New Card'}
+        fontSize={30}
+        fontFamily={TITLE_FONT}
+        fontStyle="bold"
+        fill={textFill}
+      />
+
+      {/* 4. Mana cost */}
+      {!land && fields.manaCost && (
+        <ManaText
+          x={manaX}
+          y={NAME_BAR.y + (NAME_BAR.h - manaSymbolSize) / 2}
+          width={manaWidth}
+          text={fields.manaCost}
+          fontSize={manaSymbolSize}
+          symbolSize={manaSymbolSize}
+          symbolBasePath={symbolsPath}
         />
       )}
 
-      {/* Type line bar */}
-      <Rect x={TYPE_X} y={TYPE_Y - 4} width={TYPE_W} height={28} fill={frameHex} cornerRadius={4} />
+      {/* 5. Type line */}
       <TextField
-        x={TYPE_X + 4}
-        y={TYPE_Y}
-        width={TYPE_W - 8}
+        x={TYPE_BAR.x + BAR_PAD}
+        y={typeTextY}
+        width={TYPE_BAR.w - BAR_PAD * 2 - 40}
         text={typeLineText}
-        fontSize={14}
+        fontSize={22}
+        fontFamily={TITLE_FONT}
         fontStyle="bold"
-        fill={color === 'black' ? '#e5e7eb' : '#1a1a1a'}
+        fill={textFill}
       />
 
-      {/* Rarity gem */}
-      <Rect x={RARITY_X} y={RARITY_Y - 4} width={20} height={20} fill={rarityColor} cornerRadius={10} />
+      {/* 6. Rarity gem — colored diamond at right of type bar */}
+      <Text
+        x={TYPE_BAR.x + TYPE_BAR.w - 38}
+        y={TYPE_BAR.y + (TYPE_BAR.h - 26) / 2}
+        width={26}
+        height={26}
+        text="◆"
+        fontSize={22}
+        fill={rarityColor}
+        align="center"
+        listening={false}
+      />
 
-      {/* Rules + flavor text box */}
+      {/* 7. Rules + flavor text */}
       <RulesBox
-        x={TEXTBOX_X}
-        y={TEXTBOX_Y}
-        width={TEXTBOX_W}
-        height={TEXTBOX_H}
+        x={TEXT_BOX.x}
+        y={TEXT_BOX.y}
+        width={TEXT_BOX.w}
+        height={TEXT_BOX.h}
         rulesText={fields.rulesText}
         flavorText={fields.flavorText}
         symbolBasePath={symbolsPath}
-        fontSize={14}
-        background={color === 'black' ? 'rgba(30,30,30,0.9)' : 'rgba(240,237,224,0.9)'}
+        fontSize={18}
+        background="transparent"
+        stroke="transparent"
+        strokeWidth={0}
       />
 
-      {/* Power / Toughness */}
+      {/* 8. Power / Toughness */}
       {creature && (fields.power || fields.toughness) && (
         <PtBox
-          x={PT_X}
-          y={PT_Y}
+          x={PT_BOX.x}
+          y={PT_BOX.y}
           power={fields.power}
           toughness={fields.toughness}
-          background={frameHex}
-          textColor={color === 'black' ? '#e5e7eb' : '#1a1a1a'}
+          background="transparent"
+          textColor={textFill}
+          stroke="transparent"
         />
       )}
 
-      {/* Footer: artist + collector number */}
+      {/* 9. Footer */}
       <Text
-        x={FOOTER_X}
-        y={FOOTER_Y}
-        width={400}
+        x={NAME_BAR.x}
+        y={CARD_H - 26}
+        width={320}
         text={fields.artist ? `Illus. ${fields.artist}` : ''}
-        fontSize={9}
-        fontFamily="Geist Sans"
-        fill={color === 'black' ? '#9ca3af' : '#4b5563'}
+        fontSize={10}
+        fontFamily={BODY_FONT}
+        fill={subtleFill}
         listening={false}
       />
       <Text
-        x={CARD_W - BORDER - 60}
-        y={FOOTER_Y}
-        width={60}
-        text={fields.collectorNumber ? `${fields.collectorNumber}` : ''}
-        fontSize={9}
-        fontFamily="Geist Sans"
+        x={CARD_W - NAME_BAR.x - 80}
+        y={CARD_H - 26}
+        width={80}
+        text={fields.collectorNumber ?? ''}
+        fontSize={10}
+        fontFamily={BODY_FONT}
         align="right"
-        fill={color === 'black' ? '#9ca3af' : '#4b5563'}
+        fill={subtleFill}
         listening={false}
       />
     </Group>

@@ -1,8 +1,34 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 696 991" width="696" height="991">
-  <rect x="0" y="0" width="696" height="991" rx="10" ry="10" fill="none" stroke="#c87040" stroke-width="6"/>
-  <rect x="0" y="0" width="696" height="72" rx="10" ry="10" fill="none" stroke="#c87040" stroke-width="3"/>
-  <rect x="0" y="72" width="696" height="462" fill="none" stroke="#c87040" stroke-width="3"/>
-  <rect x="0" y="534" width="696" height="36" fill="none" stroke="#c87040" stroke-width="3"/>
-  <rect x="0" y="570" width="696" height="385" fill="none" stroke="#c87040" stroke-width="3"/>
-  <rect x="608" y="922" width="72" height="32" rx="4" ry="4" fill="#e3a07a" stroke="#c87040" stroke-width="2"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 744 1039" width="744" height="1039">
+  <defs>
+    <linearGradient id="bg-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#e8b090"/>
+      <stop offset="100%" stop-color="#c07050"/>
+    </linearGradient>
+    <linearGradient id="namebar-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f0c0a0"/>
+      <stop offset="100%" stop-color="#d08060"/>
+    </linearGradient>
+    <linearGradient id="typebar-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#e0a888"/>
+      <stop offset="100%" stop-color="#b86848"/>
+    </linearGradient>
+    <linearGradient id="textbox-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#e8b898"/>
+      <stop offset="100%" stop-color="#c07858"/>
+    </linearGradient>
+    <linearGradient id="border-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#c87040"/>
+      <stop offset="50%" stop-color="#e8a070"/>
+      <stop offset="100%" stop-color="#a05020"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="744" height="1039" rx="30" ry="30" fill="#1a0805"/>
+  <rect x="16" y="16" width="712" height="1007" rx="20" ry="20" fill="url(#bg-grad)"/>
+  <rect x="30" y="30" width="684" height="64" rx="14" ry="14" fill="url(#namebar-grad)" stroke="url(#border-grad)" stroke-width="2.5"/>
+  <rect x="30" y="104" width="684" height="468" rx="4" ry="4" fill="#1a0805"/>
+  <rect x="35" y="109" width="674" height="458" fill="#261010"/>
+  <rect x="30" y="580" width="684" height="44" rx="14" ry="14" fill="url(#typebar-grad)" stroke="url(#border-grad)" stroke-width="2.5"/>
+  <rect x="30" y="632" width="684" height="330" rx="6" ry="6" fill="url(#textbox-grad)" stroke="url(#border-grad)" stroke-width="2"/>
+  <rect x="618" y="940" width="96" height="46" rx="10" ry="10" fill="url(#namebar-grad)" stroke="url(#border-grad)" stroke-width="2.5"/>
+  <rect x="22" y="22" width="700" height="995" rx="18" ry="18" fill="none" stroke="url(#border-grad)" stroke-width="3"/>
 </svg>

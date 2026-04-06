@@ -1,14 +1,51 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 696 991" width="696" height="991">
-  <!-- M15 White frame placeholder — outer border -->
-  <rect x="0" y="0" width="696" height="991" rx="10" ry="10" fill="none" stroke="#c8c0a0" stroke-width="6"/>
-  <!-- Name/cost bar outline -->
-  <rect x="0" y="0" width="696" height="72" rx="10" ry="10" fill="none" stroke="#c8c0a0" stroke-width="3"/>
-  <!-- Art frame outline -->
-  <rect x="0" y="72" width="696" height="462" fill="none" stroke="#c8c0a0" stroke-width="3"/>
-  <!-- Type line bar outline -->
-  <rect x="0" y="534" width="696" height="36" fill="none" stroke="#c8c0a0" stroke-width="3"/>
-  <!-- Text box outline -->
-  <rect x="0" y="570" width="696" height="385" rx="0" ry="0" fill="none" stroke="#c8c0a0" stroke-width="3"/>
-  <!-- P/T box outline -->
-  <rect x="608" y="922" width="72" height="32" rx="4" ry="4" fill="#f0ede0" stroke="#c8c0a0" stroke-width="2"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 744 1039" width="744" height="1039">
+  <defs>
+    <linearGradient id="bg-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f5f0e4"/>
+      <stop offset="100%" stop-color="#ddd5b8"/>
+    </linearGradient>
+    <linearGradient id="namebar-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f8f4ea"/>
+      <stop offset="100%" stop-color="#e8dfc8"/>
+    </linearGradient>
+    <linearGradient id="typebar-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f0ebe0"/>
+      <stop offset="100%" stop-color="#ddd5bc"/>
+    </linearGradient>
+    <linearGradient id="textbox-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f2ede2"/>
+      <stop offset="100%" stop-color="#e4dcc8"/>
+    </linearGradient>
+    <linearGradient id="border-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#c8b87a"/>
+      <stop offset="50%" stop-color="#e8d89a"/>
+      <stop offset="100%" stop-color="#a89858"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Outer card border (dark) -->
+  <rect x="0" y="0" width="744" height="1039" rx="30" ry="30" fill="#1a1205"/>
+
+  <!-- Inner card face -->
+  <rect x="16" y="16" width="712" height="1007" rx="20" ry="20" fill="url(#bg-grad)"/>
+
+  <!-- Name bar background -->
+  <rect x="30" y="30" width="684" height="64" rx="14" ry="14" fill="url(#namebar-grad)" stroke="url(#border-grad)" stroke-width="2.5"/>
+
+  <!-- Art frame border -->
+  <rect x="30" y="104" width="684" height="468" rx="4" ry="4" fill="#1a1205"/>
+  <!-- Art frame inner (will be covered by art image) -->
+  <rect x="35" y="109" width="674" height="458" fill="#2a2010"/>
+
+  <!-- Type bar background -->
+  <rect x="30" y="580" width="684" height="44" rx="14" ry="14" fill="url(#typebar-grad)" stroke="url(#border-grad)" stroke-width="2.5"/>
+
+  <!-- Text box background -->
+  <rect x="30" y="632" width="684" height="330" rx="6" ry="6" fill="url(#textbox-grad)" stroke="url(#border-grad)" stroke-width="2"/>
+
+  <!-- P/T box -->
+  <rect x="618" y="940" width="96" height="46" rx="10" ry="10" fill="url(#namebar-grad)" stroke="url(#border-grad)" stroke-width="2.5"/>
+
+  <!-- Inner border frame line around entire face -->
+  <rect x="22" y="22" width="700" height="995" rx="18" ry="18" fill="none" stroke="url(#border-grad)" stroke-width="3"/>
 </svg>

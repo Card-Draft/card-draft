@@ -54,6 +54,7 @@ export default defineConfig({
   },
   renderer: {
     root: resolve(__dirname, 'src'),
+    publicDir: resolve(__dirname, '../../templates'),
     build: {
       rollupOptions: {
         input: resolve(__dirname, 'src/index.html'),
