@@ -1,0 +1,33 @@
+{
+  "name": "@card-draft/template-runtime",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@card-draft/core": "workspace:*",
+    "konva": "^9.3.20",
+    "ses": "^1.12.0",
+    "react": "^19.1.0",
+    "react-konva": "^19.0.7",
+    "use-image": "^1.1.3",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.2",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.1"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
+  }
+}

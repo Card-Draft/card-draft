@@ -1,0 +1,26 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/**/*",
+    "../../packages/core/src/**/*.ts",
+    "../../packages/template-runtime/src/**/*.ts",
+    "../../packages/template-runtime/src/**/*.tsx",
+    "../../templates/magic-m15/**/*.ts",
+    "../../templates/magic-m15/**/*.tsx",
+    "../../templates/magic-m15/**/*.json"
+  ],
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "dist",
+    "rootDir": "../../",
+    "types": ["vite/client", "electron"],
+    "paths": {
+      "@/*": ["./src/*"],
+      "@card-draft/core": ["../../packages/core/src/index.ts"],
+      "@card-draft/core/*": ["../../packages/core/src/*"],
+      "@card-draft/template-runtime": ["../../packages/template-runtime/src/index.ts"],
+      "@card-draft/template-runtime/*": ["../../packages/template-runtime/src/*"],
+      "@card-draft/templates/*": ["../../templates/*"]
+    }
+  }
+}

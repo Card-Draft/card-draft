@@ -1,0 +1,24 @@
+{
+  "name": "magic-m15",
+  "displayName": "Magic: The Gathering — M15 Frame",
+  "version": "0.1.0",
+  "game": "magic",
+  "author": "Card Draft Team",
+  "cardSize": { "width": 2.5, "height": 3.5, "unit": "in" },
+  "fields": [
+    { "id": "name", "type": "text", "label": "Card Name", "required": true, "defaultValue": "New Card" },
+    { "id": "manaCost", "type": "mana", "label": "Mana Cost", "defaultValue": "" },
+    { "id": "color", "type": "select", "label": "Color", "options": ["white", "blue", "black", "red", "green", "gold", "colorless", "land"], "defaultValue": "colorless" },
+    { "id": "supertype", "type": "text", "label": "Supertype", "defaultValue": "" },
+    { "id": "type", "type": "text", "label": "Card Type", "required": true, "defaultValue": "Instant" },
+    { "id": "subtype", "type": "text", "label": "Subtype", "defaultValue": "" },
+    { "id": "art", "type": "image", "label": "Card Art" },
+    { "id": "rulesText", "type": "richtext", "label": "Rules Text", "defaultValue": "" },
+    { "id": "flavorText", "type": "text", "label": "Flavor Text", "italic": true, "defaultValue": "" },
+    { "id": "power", "type": "text", "label": "Power", "conditional": "isCreature", "defaultValue": "" },
+    { "id": "toughness", "type": "text", "label": "Toughness", "conditional": "isCreature", "defaultValue": "" },
+    { "id": "rarity", "type": "select", "label": "Rarity", "options": ["common", "uncommon", "rare", "mythic"], "defaultValue": "common" },
+    { "id": "artist", "type": "text", "label": "Artist", "defaultValue": "" },
+    { "id": "collectorNumber", "type": "text", "label": "Collector #", "defaultValue": "1" }
+  ]
+}

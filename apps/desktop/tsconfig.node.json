@@ -1,0 +1,25 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "electron/**/*",
+    "src/lib/ipc-types.ts",
+    "../../packages/core/src/**/*.ts",
+    "../../packages/template-runtime/src/**/*.ts",
+    "../../packages/template-runtime/src/**/*.tsx",
+    "vite.config.ts",
+    "electron-builder.config.ts"
+  ],
+  "compilerOptions": {
+    "composite": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "outDir": "dist-electron",
+    "rootDir": "../../",
+    "paths": {
+      "@card-draft/core": ["../../packages/core/src/index.ts"],
+      "@card-draft/core/*": ["../../packages/core/src/*"],
+      "@card-draft/template-runtime": ["../../packages/template-runtime/src/index.ts"],
+      "@card-draft/template-runtime/*": ["../../packages/template-runtime/src/*"]
+    }
+  }
+}

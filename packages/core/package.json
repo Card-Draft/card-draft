@@ -1,0 +1,36 @@
+{
+  "name": "@card-draft/core",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./db/schema": "./dist/db/schema.js",
+    "./types": "./dist/types/index.js",
+    "./export/png": "./dist/export/png.js",
+    "./export/pdf": "./dist/export/pdf.js",
+    "./importer/mse-set": "./dist/importer/mse-set.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "generate": "drizzle-kit generate"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.9.1",
+    "drizzle-orm": "^0.41.0",
+    "jszip": "^3.10.1",
+    "pdf-lib": "^1.17.1",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.14.1",
+    "drizzle-kit": "^0.30.6",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.1"
+  }
+}

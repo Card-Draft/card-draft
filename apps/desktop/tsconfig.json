@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "include": ["electron/**/*", "src/**/*", "electron.vite.config.ts"],
+  "compilerOptions": {
+    "noEmit": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      "@card-draft/core": ["../../packages/core/src/index.ts"],
+      "@card-draft/core/*": ["../../packages/core/src/*"],
+      "@card-draft/template-runtime": ["../../packages/template-runtime/src/index.ts"],
+      "@card-draft/template-runtime/*": ["../../packages/template-runtime/src/*"],
+      "@card-draft/templates/*": ["../../templates/*"]
+    }
+  }
+}

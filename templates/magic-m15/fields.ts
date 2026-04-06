@@ -1,0 +1,22 @@
+import { z } from 'zod'
+
+export const M15FieldsSchema = z.object({
+  name: z.string().default('New Card'),
+  manaCost: z.string().default(''),
+  color: z
+    .enum(['white', 'blue', 'black', 'red', 'green', 'gold', 'colorless', 'land'])
+    .default('colorless'),
+  supertype: z.string().default(''),
+  type: z.string().default('Instant'),
+  subtype: z.string().default(''),
+  art: z.string().optional(),
+  rulesText: z.string().default(''),
+  flavorText: z.string().default(''),
+  power: z.string().default(''),
+  toughness: z.string().default(''),
+  rarity: z.enum(['common', 'uncommon', 'rare', 'mythic']).default('common'),
+  artist: z.string().default(''),
+  collectorNumber: z.string().default('1'),
+})
+
+export type M15Fields = z.infer<typeof M15FieldsSchema>
