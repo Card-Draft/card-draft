@@ -1,6 +1,9 @@
 node_modules
 .turbo
 dist
+out
+dist-electron
+*.tsbuildinfo
 .DS_Store
 *.carddraft
 .env
