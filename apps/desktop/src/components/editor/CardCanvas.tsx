@@ -5,7 +5,7 @@
  * The stage ref is exposed so the export pipeline can call stage.toDataURL().
  */
 
-import { useRef, useEffect, useCallback, Suspense, lazy } from 'react'
+import { useRef, useEffect, useCallback, Suspense, lazy, useState } from 'react'
 import { Stage, Layer } from 'react-konva'
 import type Konva from 'konva'
 import { useEditorStore } from '../../stores/editorStore'
@@ -25,12 +25,16 @@ const M15Template = lazy(() => import('@card-draft/templates/magic-m15/template'
 
 export function CardCanvas() {
   const stageRef = useRef<Konva.Stage>(null)
+  const viewportRef = useRef<HTMLDivElement>(null)
   const zoom = useUiStore((s) => s.zoom)
   const activeCardId = useEditorStore((s) => s.activeCardId)
   const fieldValues = useEditorStore((s) => s.fieldValues)
   const setFieldValues = useEditorStore((s) => s.setFieldValues)
   const markClean = useEditorStore((s) => s.markClean)
   const isDirty = useEditorStore((s) => s.isDirty)
+  const setZoom = useUiStore((s) => s.setZoom)
+  const setPreviewFitScale = useUiStore((s) => s.setPreviewFitScale)
+  const [fitScale, setFitScale] = useState(1)
 
   // Load card from DB when activeCardId changes
   const { data: card } = useQuery({
@@ -51,6 +55,33 @@ export function CardCanvas() {
     globalStageRef = stageRef.current
     return () => { globalStageRef = null }
   }, [stageRef.current])
+
+  useEffect(() => {
+    const viewport = viewportRef.current
+    if (!viewport) return
+
+    const updateFitScale = () => {
+      const padding = 48
+      const widthScale = (viewport.clientWidth - padding) / CARD_WIDTH
+      const heightScale = (viewport.clientHeight - padding) / CARD_HEIGHT
+      const nextFitScale = Math.min(widthScale, heightScale, 1)
+      const resolvedFitScale = Number.isFinite(nextFitScale) && nextFitScale > 0 ? nextFitScale : 1
+      setFitScale(resolvedFitScale)
+      setPreviewFitScale(resolvedFitScale)
+    }
+
+    updateFitScale()
+
+    const observer = new ResizeObserver(() => {
+      updateFitScale()
+    })
+
+    observer.observe(viewport)
+    return () => {
+      observer.disconnect()
+      setPreviewFitScale(1)
+    }
+  }, [setPreviewFitScale])
 
   // Debounced auto-save
   useEffect(() => {
@@ -91,32 +122,97 @@ export function CardCanvas() {
   if (!activeCardId) return null
 
   const mergedFields = getMergedFieldValues(fieldValues)
+  const effectiveScale = fitScale * zoom
+  const scaledWidth = CARD_WIDTH * effectiveScale
+  const scaledHeight = CARD_HEIGHT * effectiveScale
+
+  const handleViewportWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+    if (!event.altKey && !event.ctrlKey) return
+
+    event.preventDefault()
+
+    const nextZoom = Math.min(4, Math.max(0.25, zoom * Math.exp(-event.deltaY * 0.0025)))
+    setZoom(nextZoom)
+  }
+
+  const setActualScale = (scale: number) => {
+    if (fitScale <= 0) return
+    setZoom(Math.min(4, Math.max(0.25, scale / fitScale)))
+  }
 
   const assetsPath = `file://${import.meta.env.DEV
     ? `${window.location.origin}/../../templates/magic-m15/assets`
     : '../templates/magic-m15/assets'}`
 
   return (
-    <div className="flex items-center justify-center w-full h-full overflow-auto bg-zinc-900">
-      {/* Checkerboard background communicates transparency */}
+    <div className="flex h-full w-full bg-zinc-900 p-5">
       <div
-        className="relative shadow-2xl"
-        style={{
-          transform: `scale(${zoom})`,
-          transformOrigin: 'center center',
-        }}
+        ref={viewportRef}
+        onWheel={handleViewportWheel}
+        className="relative flex h-full w-full items-center justify-center overflow-auto rounded-2xl border border-zinc-800 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_35%),linear-gradient(180deg,#171717,#111111)]"
       >
-        <Stage ref={stageRef} width={CARD_WIDTH} height={CARD_HEIGHT}>
-          <Layer>
-            <Suspense fallback={null}>
-              <M15Template
-                fields={mergedFields as unknown as M15Fields}
-                assetsPath={assetsPath}
-              />
-            </Suspense>
-          </Layer>
-        </Stage>
+        <div className="absolute inset-x-0 top-0 flex items-start justify-between px-3 pt-3">
+          <div className="pointer-events-none rounded-full border border-zinc-800/80 bg-zinc-950/80 px-3 py-1 text-xs text-zinc-500 backdrop-blur">
+            Hold Option and scroll, or pinch, to zoom
+          </div>
+
+          <div className="flex items-center gap-1 rounded-full border border-zinc-800/80 bg-zinc-950/80 p-1 backdrop-blur">
+            <ZoomPresetButton active={Math.abs(zoom - 1) < 0.01} onClick={() => setZoom(1)}>
+              Fit
+            </ZoomPresetButton>
+            <ZoomPresetButton active={Math.abs(effectiveScale - 1) < 0.02} onClick={() => setActualScale(1)}>
+              100%
+            </ZoomPresetButton>
+            <ZoomPresetButton active={Math.abs(effectiveScale - 2) < 0.04} onClick={() => setActualScale(2)}>
+              200%
+            </ZoomPresetButton>
+          </div>
+        </div>
+
+        <div
+          className="relative my-8 shrink-0 transition-[width,height] duration-75 ease-out"
+          style={{ width: scaledWidth, height: scaledHeight }}
+        >
+          <div
+            className="absolute left-0 top-0 origin-top-left shadow-2xl"
+            style={{ transform: `scale(${effectiveScale})` }}
+          >
+            <Stage ref={stageRef} width={CARD_WIDTH} height={CARD_HEIGHT}>
+              <Layer>
+                <Suspense fallback={null}>
+                  <M15Template
+                    fields={mergedFields as unknown as M15Fields}
+                    assetsPath={assetsPath}
+                  />
+                </Suspense>
+              </Layer>
+            </Stage>
+          </div>
+        </div>
       </div>
     </div>
+  )
+}
+
+function ZoomPresetButton({
+  active,
+  children,
+  onClick,
+}: {
+  active: boolean
+  children: React.ReactNode
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`rounded-full px-2.5 py-1 text-xs transition-colors ${
+        active
+          ? 'bg-zinc-100 text-zinc-950'
+          : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100'
+      }`}
+    >
+      {children}
+    </button>
   )
 }

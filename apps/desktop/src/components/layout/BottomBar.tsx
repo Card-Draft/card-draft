@@ -5,8 +5,19 @@ import { ZoomIn, ZoomOut } from 'lucide-react'
 
 export function BottomBar() {
   const zoom = useUiStore((s) => s.zoom)
+  const previewFitScale = useUiStore((s) => s.previewFitScale)
   const setZoom = useUiStore((s) => s.setZoom)
   const activeSetId = useEditorStore((s) => s.activeSetId)
+  const effectiveScale = previewFitScale * zoom
+
+  let zoomLabel = `${Math.round(effectiveScale * 100)}%`
+  if (Math.abs(zoom - 1) < 0.01) {
+    zoomLabel = `Fit · ${Math.round(effectiveScale * 100)}%`
+  } else if (Math.abs(effectiveScale - 1) < 0.02) {
+    zoomLabel = '100%'
+  } else if (Math.abs(effectiveScale - 2) < 0.04) {
+    zoomLabel = '200%'
+  }
 
   const { data: cards = [] } = useQuery({
     queryKey: ['cards', activeSetId],
@@ -24,7 +35,7 @@ export function BottomBar() {
         >
           <ZoomOut size={12} />
         </button>
-        <span className="w-12 text-center">{Math.round(zoom * 100)}%</span>
+        <span className="min-w-20 text-center">{zoomLabel}</span>
         <button
           onClick={() => setZoom(Math.min(2, zoom + 0.25))}
           className="hover:text-zinc-300 transition-colors"

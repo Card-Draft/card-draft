@@ -7,6 +7,7 @@
 
 import { Group, Text, Image as KonvaImage, Circle } from 'react-konva'
 import useImage from 'use-image'
+import { tokenizeManaText, type ManaToken as Token } from './manaTokenize'
 
 // Symbol color map for colored circles (fallback when image not loaded)
 const SYMBOL_COLORS: Record<string, string> = {
@@ -81,28 +82,6 @@ interface ManaTextProps {
   fontStyle?: 'normal' | 'italic'
 }
 
-interface TextToken { kind: 'text'; value: string }
-interface SymbolToken { kind: 'symbol'; value: string }
-type Token = TextToken | SymbolToken
-
-function tokenize(input: string): Token[] {
-  const tokens: Token[] = []
-  let remaining = input
-  while (remaining.length > 0) {
-    const match = /^\{([^}]+)\}/.exec(remaining)
-    if (match) {
-      tokens.push({ kind: 'symbol', value: match[1] ?? '' })
-      remaining = remaining.slice(match[0].length)
-    } else {
-      const end = remaining.indexOf('{')
-      const text = end === -1 ? remaining : remaining.slice(0, end)
-      tokens.push({ kind: 'text', value: text })
-      remaining = end === -1 ? '' : remaining.slice(end)
-    }
-  }
-  return tokens
-}
-
 export function ManaText({
   x,
   y,
@@ -116,7 +95,7 @@ export function ManaText({
   fontStyle = 'normal',
 }: ManaTextProps) {
   const symSize = symbolSize ?? fontSize * 1.1
-  const tokens = tokenize(text)
+  const tokens = tokenizeManaText(text)
 
   // Lay out tokens left-to-right, wrapping at width
   // This is a simplified single-line layout; multi-line wrapping is TODO

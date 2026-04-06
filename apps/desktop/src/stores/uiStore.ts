@@ -4,6 +4,7 @@ interface UiState {
   sidebarOpen: boolean
   rightPanelOpen: boolean
   zoom: number
+  previewFitScale: number
   newSetDialogOpen: boolean
   exportDialogOpen: boolean
   importMseDialogOpen: boolean
@@ -11,6 +12,7 @@ interface UiState {
   toggleSidebar: () => void
   toggleRightPanel: () => void
   setZoom: (zoom: number) => void
+  setPreviewFitScale: (fitScale: number) => void
   openNewSetDialog: () => void
   closeNewSetDialog: () => void
   openExportDialog: () => void
@@ -23,6 +25,7 @@ export const useUiStore = create<UiState>((set) => ({
   sidebarOpen: true,
   rightPanelOpen: true,
   zoom: 1,
+  previewFitScale: 1,
   newSetDialogOpen: false,
   exportDialogOpen: false,
   importMseDialogOpen: false,
@@ -30,6 +33,7 @@ export const useUiStore = create<UiState>((set) => ({
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
   toggleRightPanel: () => set((s) => ({ rightPanelOpen: !s.rightPanelOpen })),
   setZoom: (zoom) => set({ zoom }),
+  setPreviewFitScale: (previewFitScale) => set({ previewFitScale }),
   openNewSetDialog: () => set({ newSetDialogOpen: true }),
   closeNewSetDialog: () => set({ newSetDialogOpen: false }),
   openExportDialog: () => set({ exportDialogOpen: true }),
