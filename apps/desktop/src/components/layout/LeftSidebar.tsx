@@ -18,6 +18,17 @@ import { MiniCardPreview } from '../cards/MiniCardPreview'
 type SortField = 'setOrder' | 'name' | 'manaCost' | 'color' | 'type' | 'collectorNumber' | 'rarity'
 type SortDirection = 'asc' | 'desc'
 
+const COLOR_SORT_ORDER: Record<string, number> = {
+  white: 0,
+  blue: 1,
+  black: 2,
+  red: 3,
+  green: 4,
+  gold: 5,
+  colorless: 6,
+  land: 7,
+}
+
 export function LeftSidebar() {
   const availableSets = useEditorStore((s) => s.availableSets)
   const activeSetId = useEditorStore((s) => s.activeSetId)
@@ -139,7 +150,9 @@ export function LeftSidebar() {
           )
           break
         case 'color':
-          comparison = compareText(leftFields.color ?? '', rightFields.color ?? '')
+          comparison =
+            (COLOR_SORT_ORDER[(leftFields.color ?? '').toLowerCase()] ?? 999) -
+            (COLOR_SORT_ORDER[(rightFields.color ?? '').toLowerCase()] ?? 999)
           break
         case 'type':
           comparison = compareText(getDisplayType(left.card.fields), getDisplayType(right.card.fields))
