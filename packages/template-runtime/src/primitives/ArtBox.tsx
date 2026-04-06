@@ -15,7 +15,8 @@ interface ArtBoxProps {
 }
 
 export function ArtBox({ x, y, width, height, src, cropX = 0, cropY = 0, cropWidth = 1, cropHeight = 1 }: ArtBoxProps) {
-  const [image] = useImage(src ?? '', 'anonymous')
+  const crossOrigin = src?.startsWith('file://') ? undefined : 'anonymous'
+  const [image] = useImage(src ?? '', crossOrigin)
 
   if (!image) {
     // Placeholder when no art loaded

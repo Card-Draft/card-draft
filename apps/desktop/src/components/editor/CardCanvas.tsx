@@ -35,6 +35,7 @@ export function CardCanvas() {
   const setZoom = useUiStore((s) => s.setZoom)
   const setPreviewFitScale = useUiStore((s) => s.setPreviewFitScale)
   const [fitScale, setFitScale] = useState(1)
+  const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 })
 
   // Load card from DB when activeCardId changes
   const { data: card } = useQuery({
@@ -62,6 +63,10 @@ export function CardCanvas() {
 
     const updateFitScale = () => {
       const padding = 48
+      setViewportSize({
+        width: viewport.clientWidth,
+        height: viewport.clientHeight,
+      })
       const widthScale = (viewport.clientWidth - padding) / CARD_WIDTH
       const heightScale = (viewport.clientHeight - padding) / CARD_HEIGHT
       const nextFitScale = Math.min(widthScale, heightScale, 1)
@@ -125,6 +130,11 @@ export function CardCanvas() {
   const effectiveScale = fitScale * zoom
   const scaledWidth = CARD_WIDTH * effectiveScale
   const scaledHeight = CARD_HEIGHT * effectiveScale
+  const canvasPadding = 48
+  const canvasSpaceWidth = Math.max(viewportSize.width, scaledWidth + canvasPadding * 2)
+  const canvasSpaceHeight = Math.max(viewportSize.height, scaledHeight + canvasPadding * 2)
+  const canvasLeft = Math.max((canvasSpaceWidth - scaledWidth) / 2, canvasPadding)
+  const canvasTop = Math.max((canvasSpaceHeight - scaledHeight) / 2, canvasPadding)
 
   const handleViewportWheel = (event: React.WheelEvent<HTMLDivElement>) => {
     if (!event.altKey && !event.ctrlKey) return
@@ -146,17 +156,13 @@ export function CardCanvas() {
 
   return (
     <div className="flex h-full w-full bg-zinc-900 p-5">
-      <div
-        ref={viewportRef}
-        onWheel={handleViewportWheel}
-        className="relative flex h-full w-full items-center justify-center overflow-auto rounded-2xl border border-zinc-800 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_35%),linear-gradient(180deg,#171717,#111111)]"
-      >
-        <div className="absolute inset-x-0 top-0 flex items-start justify-between px-3 pt-3">
-          <div className="pointer-events-none rounded-full border border-zinc-800/80 bg-zinc-950/80 px-3 py-1 text-xs text-zinc-500 backdrop-blur">
+      <div className="relative h-full w-full">
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-[2147483647] flex items-start justify-between px-3 pt-3">
+          <div className="rounded-full border border-zinc-800/80 bg-zinc-950/90 px-3 py-1 text-xs text-zinc-500 shadow-lg backdrop-blur">
             Hold Option and scroll, or pinch, to zoom
           </div>
 
-          <div className="flex items-center gap-1 rounded-full border border-zinc-800/80 bg-zinc-950/80 p-1 backdrop-blur">
+          <div className="pointer-events-auto flex items-center gap-1 rounded-full border border-zinc-800/80 bg-zinc-950/95 p-1 shadow-lg backdrop-blur">
             <ZoomPresetButton active={Math.abs(zoom - 1) < 0.01} onClick={() => setZoom(1)}>
               Fit
             </ZoomPresetButton>
@@ -170,12 +176,17 @@ export function CardCanvas() {
         </div>
 
         <div
-          className="relative my-8 shrink-0 transition-[width,height] duration-75 ease-out"
-          style={{ width: scaledWidth, height: scaledHeight }}
+          ref={viewportRef}
+          onWheel={handleViewportWheel}
+          className="h-full w-full overflow-auto rounded-2xl border border-zinc-800 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_35%),linear-gradient(180deg,#171717,#111111)]"
+        >
+        <div
+          className="relative min-h-full min-w-full transition-[width,height] duration-75 ease-out"
+          style={{ width: canvasSpaceWidth, height: canvasSpaceHeight }}
         >
           <div
-            className="absolute left-0 top-0 origin-top-left shadow-2xl"
-            style={{ transform: `scale(${effectiveScale})` }}
+            className="absolute origin-top-left shadow-2xl"
+            style={{ left: canvasLeft, top: canvasTop, transform: `scale(${effectiveScale})` }}
           >
             <Stage ref={stageRef} width={CARD_WIDTH} height={CARD_HEIGHT}>
               <Layer>
@@ -189,6 +200,7 @@ export function CardCanvas() {
             </Stage>
           </div>
         </div>
+      </div>
       </div>
     </div>
   )

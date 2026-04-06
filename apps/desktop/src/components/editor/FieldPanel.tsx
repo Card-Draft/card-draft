@@ -9,6 +9,7 @@ import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { useEditorStore } from '../../stores/editorStore'
 import { getDefaultFieldValues, getMergedFieldValues } from '../../lib/cardFields'
+import { toFileUrl } from '../../lib/utils'
 
 // The M15 manifest inline — Phase 2 loads this dynamically from the template
 import manifest from '@card-draft/templates/magic-m15/manifest.json'
@@ -117,8 +118,7 @@ function ImageField({ fieldId }: { fieldId: string }) {
       filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }],
     })
     if (path) {
-      // Use file:// URL for Konva to load
-      setFieldValue(fieldId, `file://${path}`)
+      setFieldValue(fieldId, toFileUrl(path))
     }
   }
 
