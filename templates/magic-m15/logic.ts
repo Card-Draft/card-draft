@@ -32,11 +32,47 @@ export type FrameColor =
   | 'colorless'
   | 'land'
 
-export function frameColor(fields: M15Fields): FrameColor {
-  // Explicit color override takes priority
-  if (fields.color && fields.color !== 'colorless') return fields.color as FrameColor
+const MANA_TO_FRAME_COLOR: Record<string, Extract<FrameColor, 'white' | 'blue' | 'black' | 'red' | 'green'>> = {
+  W: 'white',
+  U: 'blue',
+  B: 'black',
+  R: 'red',
+  G: 'green',
+}
+
+function manaColors(fields: M15Fields) {
+  const colors = new Set<FrameColor>()
+  const matches = fields.manaCost.match(/\{([^}]+)\}/g) ?? []
+
+  for (const match of matches) {
+    const symbol = match.slice(1, -1).toUpperCase()
+    const parts = symbol.split('/')
+
+    for (const part of parts) {
+      const mapped = MANA_TO_FRAME_COLOR[part]
+      if (mapped) {
+        colors.add(mapped)
+      }
+    }
+  }
+
+  return colors
+}
+
+export function inferredFrameColor(fields: M15Fields): FrameColor {
   if (isLand(fields)) return 'land'
-  return 'colorless'
+
+  const colors = manaColors(fields)
+  if (colors.size === 0) return 'colorless'
+  if (colors.size > 1) return 'gold'
+
+  return [...colors][0] ?? 'colorless'
+}
+
+export function frameColor(fields: M15Fields): FrameColor {
+  if (fields.color === 'land') return 'land'
+  if (fields.color && fields.color !== 'colorless') return fields.color as FrameColor
+  return inferredFrameColor(fields)
 }
 
 /** Builds the full type line string */

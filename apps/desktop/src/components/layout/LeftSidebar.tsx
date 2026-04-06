@@ -5,6 +5,8 @@ import { useUiStore } from '../../stores/uiStore'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import type { Card } from '@card-draft/core/types'
+import type { M15Fields } from '@card-draft/templates/magic-m15/fields'
+import { inferredFrameColor } from '@card-draft/templates/magic-m15/logic'
 import {
   getDefaultFieldValues,
   getDisplayName,
@@ -151,8 +153,18 @@ export function LeftSidebar() {
           break
         case 'color':
           comparison =
-            (COLOR_SORT_ORDER[(leftFields.color ?? '').toLowerCase()] ?? 999) -
-            (COLOR_SORT_ORDER[(rightFields.color ?? '').toLowerCase()] ?? 999)
+            (COLOR_SORT_ORDER[
+              inferredFrameColor({
+                ...getDefaultFieldValues(),
+                ...leftFields,
+              } as M15Fields)
+            ] ?? 999) -
+            (COLOR_SORT_ORDER[
+              inferredFrameColor({
+                ...getDefaultFieldValues(),
+                ...rightFields,
+              } as M15Fields)
+            ] ?? 999)
           break
         case 'type':
           comparison = compareText(getDisplayType(left.card.fields), getDisplayType(right.card.fields))
