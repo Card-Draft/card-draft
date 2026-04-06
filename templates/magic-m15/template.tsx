@@ -8,6 +8,7 @@
  * Community contributors can replace the SVG assets with pixel-perfect artwork.
  */
 
+import { useCallback, useEffect } from 'react'
 import { Group, Rect, Image as KonvaImage, Text } from 'react-konva'
 import useImage from 'use-image'
 import type { TemplateProps } from '@card-draft/template-runtime'
@@ -71,7 +72,26 @@ const PT_Y = 960
 const FOOTER_Y = 1000
 const FOOTER_X = 57
 
-export default function M15Template({ fields: rawFields, assetsPath }: TemplateProps<M15Fields>) {
+interface AssetStatus {
+  pending: boolean
+  error: string | null
+}
+
+interface M15TemplateProps extends TemplateProps<M15Fields> {
+  onAssetStatusChange?: (status: AssetStatus) => void
+}
+
+function parseFraction(value: string | undefined, fallback: number) {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return fallback
+  return parsed
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max)
+}
+
+export default function M15Template({ fields: rawFields, assetsPath, onAssetStatusChange }: M15TemplateProps) {
   const fields = rawFields
   const color = frameColor(fields)
   const frameHex = FRAME_COLORS[color]
@@ -80,10 +100,39 @@ export default function M15Template({ fields: rawFields, assetsPath }: TemplateP
   const land = isLand(fields)
   const typeLineText = typeLine(fields)
   const symbolsPath = `${assetsPath}/symbols`
+  const cropWidth = clamp(parseFraction(fields.artCropWidth, 1), 0.05, 1)
+  const cropHeight = clamp(parseFraction(fields.artCropHeight, 1), 0.05, 1)
+  const cropX = clamp(parseFraction(fields.artCropX, 0), 0, 1 - cropWidth)
+  const cropY = clamp(parseFraction(fields.artCropY, 0), 0, 1 - cropHeight)
 
   // Load frame SVG (falls back to colored rect if not found)
   const frameSrc = `${assetsPath}/frame-${color}.svg`
-  const [frameImage] = useImage(frameSrc, 'anonymous')
+  const [frameImage, frameStatus] = useImage(frameSrc, 'anonymous')
+
+  useEffect(() => {
+    if (!onAssetStatusChange) return
+
+    onAssetStatusChange({
+      pending: frameStatus === 'loading' || Boolean(fields.art),
+      error: frameStatus === 'failed' ? `Failed to load frame: ${frameSrc}` : null,
+    })
+  }, [fields.art, frameSrc, frameStatus, onAssetStatusChange])
+
+  const handleImageStatusChange = useCallback(
+    (status: { src: string | null; loaded: boolean; error: string | null }) => {
+      onAssetStatusChange?.({
+        pending: frameStatus === 'loading' || (Boolean(status.src) && !status.loaded && !status.error),
+        error: status.error ?? (frameStatus === 'failed' ? `Failed to load frame: ${frameSrc}` : null),
+      })
+
+      window.dispatchEvent(
+        new CustomEvent('card-draft:image-status', {
+          detail: status,
+        }),
+      )
+    },
+    [frameSrc, frameStatus, onAssetStatusChange],
+  )
 
   return (
     <Group listening={false}>
@@ -140,13 +189,11 @@ export default function M15Template({ fields: rawFields, assetsPath }: TemplateP
         width={ART_W}
         height={ART_H}
         src={fields.art ?? null}
-        onImageStatusChange={(status) => {
-          window.dispatchEvent(
-            new CustomEvent('card-draft:image-status', {
-              detail: status,
-            }),
-          )
-        }}
+        cropX={cropX}
+        cropY={cropY}
+        cropWidth={cropWidth}
+        cropHeight={cropHeight}
+        onImageStatusChange={handleImageStatusChange}
       />
 
       {/* Frame overlay (SVG art frame, drawn on top of art) */}

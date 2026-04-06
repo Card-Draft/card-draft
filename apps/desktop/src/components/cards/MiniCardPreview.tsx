@@ -1,5 +1,11 @@
 import { cn } from '../../lib/utils'
-import { getDisplayName, getDisplayType, getMergedFieldValues, parseCardFields } from '../../lib/cardFields'
+import {
+  getArtCropValues,
+  getDisplayName,
+  getDisplayType,
+  getMergedFieldValues,
+  parseCardFields,
+} from '../../lib/cardFields'
 import { FRAME_COLORS, type FrameColor, frameColor } from '@card-draft/templates/magic-m15/logic'
 import type { Card } from '@card-draft/core/types'
 import type { M15Fields } from '@card-draft/templates/magic-m15/fields'
@@ -21,6 +27,7 @@ export function MiniCardPreview({
   const name = getDisplayName(card.fields, index ? `Card ${index}` : 'Card')
   const typeLine = getDisplayType(card.fields)
   const artSrc = fields.art
+  const { cropX, cropY, cropWidth, cropHeight } = getArtCropValues(fields)
   const color = frameColor(fields)
   const frameFill = FRAME_COLORS[color as FrameColor]
 
@@ -40,7 +47,21 @@ export function MiniCardPreview({
 
       <div className="absolute left-[9%] right-[9%] top-[17%] h-[44%] overflow-hidden rounded-md border border-black/20 bg-zinc-800">
         {artSrc ? (
-          <img src={artSrc} alt={name} className="h-full w-full object-cover" />
+          <div
+            className="absolute"
+            style={{
+              width: `${100 / cropWidth}%`,
+              height: `${100 / cropHeight}%`,
+              left: `${(-cropX / cropWidth) * 100}%`,
+              top: `${(-cropY / cropHeight) * 100}%`,
+            }}
+          >
+            <img
+              src={artSrc}
+              alt={name}
+              className="block h-full w-full object-cover"
+            />
+          </div>
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.12),_transparent_55%),linear-gradient(180deg,rgba(0,0,0,0.08),rgba(0,0,0,0.22))] text-[10px] uppercase tracking-[0.22em] text-zinc-300/80">
             No Art

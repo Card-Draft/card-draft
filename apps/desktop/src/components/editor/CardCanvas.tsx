@@ -5,16 +5,17 @@
  * The stage ref is exposed so the export pipeline can call stage.toDataURL().
  */
 
-import { useRef, useEffect, useCallback, Suspense, lazy, useState } from 'react'
-import { Stage, Layer } from 'react-konva'
+import { Component, useRef, useEffect, useCallback, Suspense, lazy, useState } from 'react'
+import { Stage, Layer, Text as KonvaText } from 'react-konva'
 import type Konva from 'konva'
 import { useEditorStore } from '../../stores/editorStore'
 import { useUiStore } from '../../stores/uiStore'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { CARD_WIDTH, CARD_HEIGHT } from '@card-draft/template-runtime'
 import { toast } from 'sonner'
 import type { M15Fields } from '@card-draft/templates/magic-m15/fields'
 import { getMergedFieldValues, parseCardFields } from '../../lib/cardFields'
+import { getMagicM15AssetsPath } from '../../lib/templateAssets'
 
 // Expose the stage ref globally so the export dialog can access it
 // This avoids prop-drilling the ref through many layers
@@ -35,6 +36,7 @@ export function CardCanvas() {
   const setZoom = useUiStore((s) => s.setZoom)
   const setPreviewFitScale = useUiStore((s) => s.setPreviewFitScale)
   const setImageLoadError = useUiStore((s) => s.setImageLoadError)
+  const queryClient = useQueryClient()
   const [fitScale, setFitScale] = useState(1)
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 })
 
@@ -105,14 +107,24 @@ export function CardCanvas() {
     if (!isDirty || !activeCardId) return
     const timer = setTimeout(async () => {
       try {
-        await window.api.cards.update(activeCardId, { fields: JSON.stringify(fieldValues) })
+        const serializedFields = JSON.stringify(fieldValues)
+        const updatedCard = await window.api.cards.update(activeCardId, { fields: serializedFields })
+        queryClient.setQueryData(['card', activeCardId], updatedCard)
+        queryClient.setQueryData(['cards', updatedCard.setId], (existing: unknown) => {
+          if (!Array.isArray(existing)) return existing
+          return existing.map((card) =>
+            typeof card === 'object' && card !== null && 'id' in card && card.id === updatedCard.id
+              ? updatedCard
+              : card,
+          )
+        })
         markClean()
       } catch {
         toast.error('Failed to save card')
       }
     }, 500)
     return () => clearTimeout(timer)
-  }, [fieldValues, isDirty, activeCardId, markClean])
+  }, [fieldValues, isDirty, activeCardId, markClean, queryClient])
 
   // Keyboard shortcuts: Ctrl+Z / Ctrl+Shift+Z
   const undo = useEditorStore((s) => s.undo)
@@ -162,9 +174,7 @@ export function CardCanvas() {
     setZoom(Math.min(4, Math.max(0.25, scale / fitScale)))
   }
 
-  const assetsPath = `file://${import.meta.env.DEV
-    ? `${window.location.origin}/../../templates/magic-m15/assets`
-    : '../templates/magic-m15/assets'}`
+  const assetsPath = getMagicM15AssetsPath()
 
   return (
     <div className="flex h-full w-full bg-zinc-900 p-5">
@@ -192,27 +202,29 @@ export function CardCanvas() {
           onWheel={handleViewportWheel}
           className="h-full w-full overflow-auto rounded-2xl border border-zinc-800 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_35%),linear-gradient(180deg,#171717,#111111)]"
         >
-        <div
-          className="relative min-h-full min-w-full transition-[width,height] duration-75 ease-out"
-          style={{ width: canvasSpaceWidth, height: canvasSpaceHeight }}
-        >
           <div
-            className="absolute origin-top-left shadow-2xl"
-            style={{ left: canvasLeft, top: canvasTop, transform: `scale(${effectiveScale})` }}
+            className="relative min-h-full min-w-full transition-[width,height] duration-75 ease-out"
+            style={{ width: canvasSpaceWidth, height: canvasSpaceHeight }}
           >
-            <Stage ref={stageRef} width={CARD_WIDTH} height={CARD_HEIGHT}>
-              <Layer>
-                <Suspense fallback={null}>
-                  <M15Template
-                    fields={mergedFields as unknown as M15Fields}
-                    assetsPath={assetsPath}
-                  />
-                </Suspense>
-              </Layer>
-            </Stage>
+            <div
+              className="absolute origin-top-left shadow-2xl"
+              style={{ left: canvasLeft, top: canvasTop, transform: `scale(${effectiveScale})` }}
+            >
+              <Stage ref={stageRef} width={CARD_WIDTH} height={CARD_HEIGHT}>
+                <Layer>
+                  <CanvasErrorBoundary>
+                    <Suspense fallback={null}>
+                      <M15Template
+                        fields={mergedFields as unknown as M15Fields}
+                        assetsPath={assetsPath}
+                      />
+                    </Suspense>
+                  </CanvasErrorBoundary>
+                </Layer>
+              </Stage>
+            </div>
           </div>
         </div>
-      </div>
       </div>
     </div>
   )
@@ -239,4 +251,47 @@ function ZoomPresetButton({
       {children}
     </button>
   )
+}
+
+class CanvasErrorBoundary extends Component<
+  { children: React.ReactNode },
+  { error: Error | null }
+> {
+  override state = { error: null as Error | null }
+
+  static getDerivedStateFromError(error: Error) {
+    return { error }
+  }
+
+  override componentDidCatch(error: Error) {
+    console.error('Card canvas render failed', error)
+  }
+
+  override render() {
+    if (this.state.error) {
+      return (
+        <>
+          <KonvaText
+            x={40}
+            y={40}
+            width={CARD_WIDTH - 80}
+            text="Card render failed"
+            fontSize={24}
+            fontStyle="bold"
+            fill="#f4f4f5"
+          />
+          <KonvaText
+            x={40}
+            y={76}
+            width={CARD_WIDTH - 80}
+            text={this.state.error.message}
+            fontSize={16}
+            fill="#f87171"
+          />
+        </>
+      )
+    }
+
+    return this.props.children
+  }
 }

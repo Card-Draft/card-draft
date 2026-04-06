@@ -82,6 +82,10 @@ const editorStoreCreator: StateCreator<EditorState, [['temporal', unknown]], []>
   },
 
   setActiveCard: (cardId) => {
+    if (get().activeCardId === cardId) {
+      return
+    }
+
     set({ activeCardId: cardId, fieldValues: {}, isDirty: false })
   },
 

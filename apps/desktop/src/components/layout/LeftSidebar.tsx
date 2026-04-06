@@ -1,4 +1,5 @@
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Search, Trash2 } from 'lucide-react'
+import { useMemo, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { useEditorStore } from '../../stores/editorStore'
 import { useUiStore } from '../../stores/uiStore'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -21,18 +22,32 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { toast } from 'sonner'
 import type { Card } from '@card-draft/core/types'
-import { getDefaultFieldValues, getDisplayName, getDisplayType } from '../../lib/cardFields'
+import {
+  getDefaultFieldValues,
+  getDisplayName,
+  getDisplayType,
+  parseCardFields,
+} from '../../lib/cardFields'
+import { ManaCostInline } from '../cards/ManaCostInline'
 import { MiniCardPreview } from '../cards/MiniCardPreview'
 
 export function LeftSidebar() {
   const availableSets = useEditorStore((s) => s.availableSets)
   const activeSetId = useEditorStore((s) => s.activeSetId)
   const activeCardId = useEditorStore((s) => s.activeCardId)
+  const fieldValues = useEditorStore((s) => s.fieldValues)
+  const isDirty = useEditorStore((s) => s.isDirty)
   const setActiveSet = useEditorStore((s) => s.setActiveSet)
   const setAvailableSets = useEditorStore((s) => s.setAvailableSets)
   const setActiveCard = useEditorStore((s) => s.setActiveCard)
   const openNewSetDialog = useUiStore((s) => s.openNewSetDialog)
   const qc = useQueryClient()
+  const [filter, setFilter] = useState('')
+  const [hoverPreview, setHoverPreview] = useState<{
+    cardId: string
+    top: number
+    left: number
+  } | null>(null)
 
   const { data: cards = [] } = useQuery({
     queryKey: ['cards', activeSetId],
@@ -94,6 +109,8 @@ export function LeftSidebar() {
   )
 
   function handleDragEnd(event: DragEndEvent) {
+    if (!sortingEnabled) return
+
     const { active, over } = event
     if (over && active.id !== over.id) {
       const oldIndex = cards.findIndex((c) => c.id === active.id)
@@ -103,8 +120,37 @@ export function LeftSidebar() {
     }
   }
 
+  const displayCards = useMemo(() => {
+    if (!activeCardId) return cards
+
+    return cards.map((card) =>
+      card.id === activeCardId
+        ? { ...card, fields: isDirty ? JSON.stringify(fieldValues) : card.fields }
+        : card,
+    )
+  }, [activeCardId, cards, fieldValues, isDirty])
+
+  const filteredCards = useMemo(() => {
+    const normalizedFilter = filter.trim().toLowerCase()
+    if (!normalizedFilter) return displayCards
+
+    return displayCards.filter((card, index) => {
+      const fields = parseCardFields(card.fields)
+      const name = getDisplayName(card.fields, `Card ${index + 1}`).toLowerCase()
+      const typeLine = getDisplayType(card.fields).toLowerCase()
+      const manaCost = (fields.manaCost ?? '').toLowerCase()
+
+      return [name, typeLine, manaCost].some((value) => value.includes(normalizedFilter))
+    })
+  }, [displayCards, filter])
+
+  const sortingEnabled = filter.trim().length === 0
+  const hoveredCard = hoverPreview
+    ? displayCards.find((card) => card.id === hoverPreview.cardId) ?? null
+    : null
+
   return (
-    <div className="flex flex-col h-full">
+    <div className="relative flex h-full flex-col">
       <div className="border-b border-zinc-800 px-3 py-3">
         <div className="mb-3 flex items-center justify-between">
           <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
@@ -158,6 +204,9 @@ export function LeftSidebar() {
         <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
           Cards
         </span>
+        <span className="text-[10px] uppercase tracking-[0.18em] text-zinc-600">
+          {filteredCards.length}/{cards.length}
+        </span>
         <button
           onClick={() => createCard.mutate()}
           disabled={!activeSetId}
@@ -168,17 +217,41 @@ export function LeftSidebar() {
         </button>
       </div>
 
+      <div className="border-b border-zinc-800 px-3 py-2.5">
+        <label className="flex items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900 px-2.5 py-2 text-sm text-zinc-400 focus-within:border-zinc-700">
+          <Search size={13} className="text-zinc-600" />
+          <input
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+            placeholder="Filter by name, mana cost, or type"
+            className="w-full bg-transparent text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none"
+          />
+        </label>
+      </div>
+
       <div className="flex-1 overflow-y-auto">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={cards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
-            {cards.map((card, i) => (
+          <SortableContext items={filteredCards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+            {filteredCards.map((card, i) => (
               <SortableCardItem
                 key={card.id}
                 card={card}
                 index={i}
                 isActive={card.id === activeCardId}
+                sortingEnabled={sortingEnabled}
                 onSelect={() => setActiveCard(card.id)}
                 onDelete={() => deleteCard.mutate(card.id)}
+                onHoverStart={(event) => {
+                  const rect = event.currentTarget.getBoundingClientRect()
+                  setHoverPreview({
+                    cardId: card.id,
+                    left: rect.right + 12,
+                    top: Math.max(16, rect.top - 8),
+                  })
+                }}
+                onHoverEnd={() => {
+                  setHoverPreview((current) => (current?.cardId === card.id ? null : current))
+                }}
               />
             ))}
           </SortableContext>
@@ -196,7 +269,24 @@ export function LeftSidebar() {
             </button>
           </div>
         )}
+
+        {cards.length > 0 && filteredCards.length === 0 && (
+          <div className="px-4 py-10 text-center text-sm text-zinc-600">
+            No cards match this filter.
+          </div>
+        )}
       </div>
+
+      {hoveredCard ? (
+        <div
+          className="pointer-events-none fixed z-50 hidden xl:block"
+          style={{ left: hoverPreview?.left ?? 0, top: hoverPreview?.top ?? 0 }}
+        >
+          <div className="w-48 rounded-2xl border border-zinc-800 bg-zinc-950/96 p-2 shadow-[0_24px_60px_rgba(0,0,0,0.45)] backdrop-blur">
+            <MiniCardPreview card={hoveredCard} className="w-full" />
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -205,17 +295,24 @@ function SortableCardItem({
   card,
   index,
   isActive,
+  sortingEnabled,
   onSelect,
   onDelete,
+  onHoverStart,
+  onHoverEnd,
 }: {
   card: Card
   index: number
   isActive: boolean
+  sortingEnabled: boolean
   onSelect: () => void
   onDelete: () => void
+  onHoverStart: (event: ReactMouseEvent<HTMLDivElement>) => void
+  onHoverEnd: () => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: card.id,
+    disabled: !sortingEnabled,
   })
 
   const style = {
@@ -226,30 +323,42 @@ function SortableCardItem({
 
   const cardName = getDisplayName(card.fields, `Card ${index + 1}`)
   const cardType = getDisplayType(card.fields)
+  const fields = parseCardFields(card.fields)
+  const manaCost = fields.manaCost?.trim() || ''
 
   return (
-      <div
-        ref={setNodeRef}
-        style={style}
-        className={`group flex cursor-pointer items-start gap-3 border-b border-zinc-800/50 px-3 py-2.5 transition-colors hover:bg-zinc-800/50 ${
-          isActive ? 'bg-zinc-800' : ''
-        }`}
-        onClick={onSelect}
-      >
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`group flex cursor-pointer items-center gap-2 border-b border-zinc-800/50 px-3 py-2 transition-colors hover:bg-zinc-800/50 ${
+        isActive ? 'bg-zinc-800' : ''
+      }`}
+      onClick={onSelect}
+      onMouseEnter={onHoverStart}
+      onMouseLeave={onHoverEnd}
+    >
       {/* Drag handle */}
       <div
         {...attributes}
         {...listeners}
-        className="cursor-grab flex-shrink-0 text-zinc-700 hover:text-zinc-500 active:cursor-grabbing"
+        className={`flex-shrink-0 text-zinc-700 ${
+          sortingEnabled
+            ? 'cursor-grab hover:text-zinc-500 active:cursor-grabbing'
+            : 'cursor-default opacity-40'
+        }`}
+        title={sortingEnabled ? 'Drag to reorder' : 'Clear filter to reorder'}
       >
         ⠿
       </div>
 
-      <MiniCardPreview card={card} index={index + 1} compact className="w-12 flex-shrink-0" />
-
       <div className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium text-zinc-300">{cardName}</span>
-        <span className="block truncate text-xs text-zinc-500">{cardType}</span>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5">
+          <span className="truncate text-sm font-medium text-zinc-200">{cardName}</span>
+          <ManaCostInline cost={manaCost} />
+          <span className="col-span-2 truncate text-[11px] uppercase tracking-[0.12em] text-zinc-500">
+            {cardType}
+          </span>
+        </div>
       </div>
 
       <button
