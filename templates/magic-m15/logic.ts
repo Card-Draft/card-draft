@@ -97,10 +97,45 @@ export const FRAME_COLORS: Record<FrameColor, string> = {
   land: '#8fbc8f',
 }
 
-/** Rarity gem colors */
+/** Rarity gem colors (fallback dot when no SVG icon uploaded) */
 export const RARITY_COLORS: Record<string, string> = {
   common: '#b0b0b0',
   uncommon: '#9ec0d3',
   rare: '#d4af37',
   mythic: '#e07840',
 }
+
+export type RarityGradientStop = { offset: number; color: string }
+
+/**
+ * Gradient stops for rarity icon fill.
+ * common: auto-computed (black or white) based on frame darkness — handled in template.
+ * uncommon: silver metallic
+ * rare: gold metallic
+ * mythic: orange → red → orange
+ */
+export const RARITY_GRADIENTS: Record<string, RarityGradientStop[]> = {
+  common: [], // handled as solid color (black/white) with contrast stroke
+  uncommon: [
+    { offset: 0, color: '#c0c8d0' },
+    { offset: 0.3, color: '#e8eef4' },
+    { offset: 0.6, color: '#9aaab8' },
+    { offset: 1, color: '#c0c8d0' },
+  ],
+  rare: [
+    { offset: 0, color: '#b8902a' },
+    { offset: 0.25, color: '#f0d060' },
+    { offset: 0.5, color: '#c8a030' },
+    { offset: 0.75, color: '#f0d060' },
+    { offset: 1, color: '#b8902a' },
+  ],
+  mythic: [
+    { offset: 0, color: '#d05000' },
+    { offset: 0.35, color: '#f09020' },
+    { offset: 0.65, color: '#e03010' },
+    { offset: 1, color: '#c04800' },
+  ],
+}
+
+/** Dark frame colors where common icon should render white */
+export const DARK_FRAMES = new Set<string>(['black'])

@@ -22,6 +22,7 @@
     { "id": "power", "type": "text", "label": "Power", "conditional": "isCreature", "defaultValue": "" },
     { "id": "toughness", "type": "text", "label": "Toughness", "conditional": "isCreature", "defaultValue": "" },
     { "id": "rarity", "type": "select", "label": "Rarity", "options": ["common", "uncommon", "rare", "mythic"], "defaultValue": "common" },
+    { "id": "rarityIcon", "type": "image", "label": "Rarity Icon (SVG)" },
     { "id": "artist", "type": "text", "label": "Artist", "defaultValue": "" },
     { "id": "collectorNumber", "type": "text", "label": "Collector #", "defaultValue": "1" }
   ]

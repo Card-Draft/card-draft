@@ -80,7 +80,7 @@ export function FieldPanel({ cardId }: FieldPanelProps) {
                 />
               </div>
             ) : field.type === 'image' ? (
-              <ImageField fieldId={field.id} />
+              <ImageField fieldId={field.id} acceptSvg={field.id === 'rarityIcon'} />
             ) : (
               <input
                 id={field.id}
@@ -99,12 +99,15 @@ export function FieldPanel({ cardId }: FieldPanelProps) {
   )
 }
 
-function ImageField({ fieldId }: { fieldId: string }) {
+function ImageField({ fieldId, acceptSvg = false }: { fieldId: string; acceptSvg?: boolean }) {
   const setFieldValue = useEditorStore((s) => s.setFieldValue)
   const fieldValues = useEditorStore((s) => s.fieldValues)
   const value = fieldValues[fieldId] ?? ''
   const imageLoadError = useUiStore((s) => s.imageLoadError)
   const setImageLoadError = useUiStore((s) => s.setImageLoadError)
+
+  // Crop controls only apply to the art field
+  const isArtField = fieldId === 'art'
   const { cropX, cropY, cropWidth, cropHeight } = getArtCropValues(fieldValues)
   const zoom = 1 / cropWidth
   const maxCropX = Math.max(0, 1 - cropWidth)
@@ -139,13 +142,15 @@ function ImageField({ fieldId }: { fieldId: string }) {
 
   const handlePick = async () => {
     const path = await window.api.dialog.openFile({
-      filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }],
+      filters: acceptSvg
+        ? [{ name: 'SVG', extensions: ['svg'] }, { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }]
+        : [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }],
     })
     if (path) {
       const dataUrl = await window.api.dialog.readFileAsDataUrl(path)
       setImageLoadError(null)
       setFieldValue(fieldId, dataUrl)
-      setCrop({ cropX: 0, cropY: 0, cropWidth: 1, cropHeight: 1 })
+      if (isArtField) setCrop({ cropX: 0, cropY: 0, cropWidth: 1, cropHeight: 1 })
     }
   }
 
@@ -155,14 +160,14 @@ function ImageField({ fieldId }: { fieldId: string }) {
         <div className="relative">
           <img
             src={value}
-            alt="Card art"
-            className="w-full h-32 object-cover rounded border border-zinc-700"
+            alt={isArtField ? 'Card art' : 'Icon'}
+            className="w-full h-32 object-contain rounded border border-zinc-700 bg-zinc-900"
           />
           <button
             onClick={() => {
               setImageLoadError(null)
               setFieldValue(fieldId, '')
-              setCrop({ cropX: 0, cropY: 0, cropWidth: 1, cropHeight: 1 })
+              if (isArtField) setCrop({ cropX: 0, cropY: 0, cropWidth: 1, cropHeight: 1 })
             }}
             className="absolute top-1 right-1 bg-zinc-900/80 text-zinc-400 hover:text-red-400 rounded px-1.5 py-0.5 text-xs"
           >
@@ -170,7 +175,7 @@ function ImageField({ fieldId }: { fieldId: string }) {
           </button>
         </div>
       ) : null}
-      {imageLoadError && value ? (
+      {imageLoadError && value && isArtField ? (
         <div className="rounded-md border border-red-900/60 bg-red-950/40 px-3 py-2 text-xs text-red-200">
           {imageLoadError}
         </div>
@@ -179,9 +184,9 @@ function ImageField({ fieldId }: { fieldId: string }) {
         onClick={() => void handlePick()}
         className="w-full py-1.5 rounded border border-dashed border-zinc-700 text-xs text-zinc-500 hover:text-zinc-300 hover:border-zinc-500 transition-colors"
       >
-        {value ? 'Change image…' : 'Choose image…'}
+        {value ? 'Change…' : 'Choose…'}
       </button>
-      {value ? (
+      {isArtField && value ? (
         <div className="space-y-3 rounded-md border border-zinc-800 bg-zinc-900/80 p-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-zinc-300">Art placement</span>

@@ -55,8 +55,14 @@ export function registerTemplateHandlers() {
   })
 
   ipcMain.handle('dialog:readFileAsDataUrl', (_e, filePath: string) => {
-    const bytes = readFileSync(filePath)
     const ext = filePath.split('.').pop()?.toLowerCase()
+
+    // SVGs are text — encode as UTF-8 data URL so browsers and Konva handle them correctly
+    if (ext === 'svg') {
+      const text = readFileSync(filePath, 'utf-8')
+      const encoded = encodeURIComponent(text)
+      return `data:image/svg+xml,${encoded}`
+    }
 
     const mimeType =
       ext === 'png'
@@ -69,6 +75,7 @@ export function registerTemplateHandlers() {
               ? 'image/gif'
               : 'application/octet-stream'
 
+    const bytes = readFileSync(filePath)
     return `data:${mimeType};base64,${bytes.toString('base64')}`
   })
 }

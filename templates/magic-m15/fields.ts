@@ -19,6 +19,7 @@ export const M15FieldsSchema = z.object({
   power: z.string().default(''),
   toughness: z.string().default(''),
   rarity: z.enum(['common', 'uncommon', 'rare', 'mythic']).default('common'),
+  rarityIcon: z.string().optional(),
   artist: z.string().default(''),
   collectorNumber: z.string().default('1'),
 })

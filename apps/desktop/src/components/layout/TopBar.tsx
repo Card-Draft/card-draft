@@ -22,8 +22,8 @@ export function TopBar() {
 
   return (
     <header className="drag-region flex items-center h-11 px-3 border-b border-zinc-800 bg-zinc-950 flex-shrink-0 gap-2">
-      {/* macOS traffic light spacer */}
-      {isMac && <div className="w-16 flex-shrink-0" />}
+      {/* macOS traffic light spacer — must be no-drag so clicks reach the OS buttons */}
+      {isMac && <div className="w-20 flex-shrink-0 no-drag" />}
 
       <div className="no-drag flex items-center gap-1">
         <IconButton onClick={toggleSidebar} title="Toggle sidebar">

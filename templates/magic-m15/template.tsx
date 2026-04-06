@@ -25,6 +25,7 @@ import {
   RulesBox,
   PtBox,
   ManaText,
+  RarityIcon,
 } from '@card-draft/template-runtime'
 import type { M15Fields } from './fields'
 import {
@@ -33,6 +34,8 @@ import {
   frameColor,
   typeLine,
   RARITY_COLORS,
+  RARITY_GRADIENTS,
+  DARK_FRAMES,
 } from './logic'
 
 const CARD_W = 744
@@ -45,9 +48,12 @@ const TYPE_BAR = { x: 30, y: 580, w: 684, h: 44 }
 const TEXT_BOX = { x: 30, y: 632, w: 684, h: 330 }
 const PT_BOX = { x: 618, y: 940, w: 96, h: 46 }
 
-// Padding inside bars for text
-const BAR_PAD = 14
+// Rarity icon dimensions — sits at right end of type bar
+const RARITY_ICON_SIZE = 36
+const RARITY_ICON_X = TYPE_BAR.x + TYPE_BAR.w - RARITY_ICON_SIZE - 6
+const RARITY_ICON_Y = TYPE_BAR.y + (TYPE_BAR.h - RARITY_ICON_SIZE) / 2
 
+const BAR_PAD = 14
 const TITLE_FONT = 'Georgia'
 const BODY_FONT = 'Georgia'
 
@@ -72,7 +78,6 @@ function clamp(value: number, min: number, max: number) {
 
 export default function M15Template({ fields, assetsPath, onAssetStatusChange }: M15TemplateProps) {
   const color = frameColor(fields)
-  const rarityColor = RARITY_COLORS[fields.rarity] ?? RARITY_COLORS['common']!
   const creature = isCreature(fields)
   const land = isLand(fields)
   const typeLineText = typeLine(fields)
@@ -83,10 +88,18 @@ export default function M15Template({ fields, assetsPath, onAssetStatusChange }:
   const cropX = clamp(parseFraction(fields.artCropX, 0), 0, 1 - cropWidth)
   const cropY = clamp(parseFraction(fields.artCropY, 0), 0, 1 - cropHeight)
 
-  // Text color: black cards use light text
-  const isDark = color === 'black'
+  const isDark = DARK_FRAMES.has(color)
   const textFill = isDark ? '#e5e7eb' : '#1a1a1a'
   const subtleFill = isDark ? '#9ca3af' : '#4b5563'
+
+  // Rarity icon gradient / solid color
+  const rarityGradient = RARITY_GRADIENTS[fields.rarity] ?? []
+  const isCommon = fields.rarity === 'common'
+  // Common: white on dark frames, black on light frames — with contrasting stroke
+  const commonFill = isDark ? '#ffffff' : '#000000'
+  const commonStroke = isDark ? '#000000' : '#ffffff'
+  // Fallback dot color (when no SVG uploaded)
+  const rarityDotColor = RARITY_COLORS[fields.rarity] ?? '#b0b0b0'
 
   // Frame SVG — rendered as the base of the card
   const frameSrc = `${assetsPath}/frame-${color}.svg`
@@ -111,19 +124,21 @@ export default function M15Template({ fields, assetsPath, onAssetStatusChange }:
     [frameSrc, frameStatus, onAssetStatusChange],
   )
 
-  // Mana cost symbols — right side of name bar
-  // Each symbol is ~30px wide; reserve space based on symbol count
+  // Mana cost layout
   const manaSymbolCount = (fields.manaCost?.match(/\{[^}]+\}/g) ?? []).length
   const manaSymbolSize = 30
   const manaWidth = Math.max(manaSymbolCount * (manaSymbolSize + 2), manaSymbolSize)
   const nameTextWidth = NAME_BAR.w - BAR_PAD * 2 - manaWidth - 8
   const manaX = NAME_BAR.x + NAME_BAR.w - BAR_PAD - manaWidth
-  const nameTextY = NAME_BAR.y + (NAME_BAR.h - 30) / 2  // vertically center 30px text
-  const typeTextY = TYPE_BAR.y + (TYPE_BAR.h - 24) / 2  // vertically center 24px text
+  const nameTextY = NAME_BAR.y + (NAME_BAR.h - 30) / 2
+  const typeTextY = TYPE_BAR.y + (TYPE_BAR.h - 24) / 2
+
+  // Type line width leaves room for rarity icon
+  const typeTextWidth = TYPE_BAR.w - BAR_PAD * 2 - RARITY_ICON_SIZE - 12
 
   return (
     <Group listening={false}>
-      {/* 1. Frame SVG — provides card background, all bars, and borders */}
+      {/* 1. Frame SVG — card background, all bars, borders */}
       {frameImage ? (
         <KonvaImage
           x={0}
@@ -134,13 +149,10 @@ export default function M15Template({ fields, assetsPath, onAssetStatusChange }:
           listening={false}
         />
       ) : (
-        /* Fallback while frame loads: plain dark card */
-        <>
-          <Text x={20} y={20} text="Loading frame…" fontSize={14} fill="#888" listening={false} />
-        </>
+        <Text x={20} y={20} text="Loading frame…" fontSize={14} fill="#888" listening={false} />
       )}
 
-      {/* 2. Art — composited into the art window */}
+      {/* 2. Art */}
       <ArtBox
         x={ART.x}
         y={ART.y}
@@ -183,7 +195,7 @@ export default function M15Template({ fields, assetsPath, onAssetStatusChange }:
       <TextField
         x={TYPE_BAR.x + BAR_PAD}
         y={typeTextY}
-        width={TYPE_BAR.w - BAR_PAD * 2 - 40}
+        width={typeTextWidth}
         text={typeLineText}
         fontSize={22}
         fontFamily={TITLE_FONT}
@@ -191,18 +203,32 @@ export default function M15Template({ fields, assetsPath, onAssetStatusChange }:
         fill={textFill}
       />
 
-      {/* 6. Rarity gem — colored diamond at right of type bar */}
-      <Text
-        x={TYPE_BAR.x + TYPE_BAR.w - 38}
-        y={TYPE_BAR.y + (TYPE_BAR.h - 26) / 2}
-        width={26}
-        height={26}
-        text="◆"
-        fontSize={22}
-        fill={rarityColor}
-        align="center"
-        listening={false}
-      />
+      {/* 6. Rarity icon */}
+      {fields.rarityIcon ? (
+        <RarityIcon
+          src={fields.rarityIcon}
+          x={RARITY_ICON_X}
+          y={RARITY_ICON_Y}
+          size={RARITY_ICON_SIZE}
+          gradientStops={isCommon ? [] : rarityGradient}
+          solidColor={isCommon ? commonFill : rarityDotColor}
+          strokeColor={isCommon ? commonStroke : undefined}
+          strokeWidth={2}
+        />
+      ) : (
+        /* Fallback dot when no SVG uploaded */
+        <Text
+          x={RARITY_ICON_X}
+          y={TYPE_BAR.y + (TYPE_BAR.h - 26) / 2}
+          width={RARITY_ICON_SIZE}
+          height={26}
+          text="◆"
+          fontSize={22}
+          fill={isCommon ? commonFill : rarityDotColor}
+          align="center"
+          listening={false}
+        />
+      )}
 
       {/* 7. Rules + flavor text */}
       <RulesBox

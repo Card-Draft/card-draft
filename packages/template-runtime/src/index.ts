@@ -7,6 +7,8 @@ export { ArtBox } from './primitives/ArtBox'
 export { ManaText } from './primitives/ManaText'
 export { RulesBox } from './primitives/RulesBox'
 export { PtBox } from './primitives/PtBox'
+export { RarityIcon } from './primitives/RarityIcon'
+export type { GradientStop } from './primitives/RarityIcon'
 
 // Generic template props type — templates receive this
 export interface TemplateProps<T extends Record<string, string | undefined> = Record<string, string | undefined>> {
