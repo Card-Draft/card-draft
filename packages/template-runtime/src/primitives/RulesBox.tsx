@@ -1,4 +1,4 @@
-import { Group, Rect } from 'react-konva'
+import { Group, Rect, Text } from 'react-konva'
 import {
   materializeRichInlineLineRange,
   prepareRichInline,
@@ -21,6 +21,8 @@ interface RulesBoxProps {
   stroke?: string
   strokeWidth?: number
   cornerRadius?: number
+  fontFamily?: string
+  italicFontFamily?: string
 }
 
 interface StyledToken {
@@ -53,7 +55,12 @@ const REMINDER_FILL = '#4b5563'
 const FLAVOR_FILL = '#333333'
 const MIN_FONT_SIZE = 12
 const FONT_SIZE_STEP = 0.5
-const RULES_FONT_FAMILY = 'Georgia'
+const DEFAULT_RULES_FONT_FAMILY = 'Georgia'
+const DEFAULT_RULES_ITALIC_FONT_FAMILY = 'Georgia'
+
+function normalizeRulesDisplayText(text: string) {
+  return text.replace(/--/g, '—')
+}
 
 export function RulesBox({
   x,
@@ -68,9 +75,12 @@ export function RulesBox({
   stroke = 'rgba(0,0,0,0.45)',
   strokeWidth = 2,
   cornerRadius = 6,
+  fontFamily = DEFAULT_RULES_FONT_FAMILY,
+  italicFontFamily = DEFAULT_RULES_ITALIC_FONT_FAMILY,
 }: RulesBoxProps) {
-  const padding = 10
-  const innerWidth = width - padding * 2
+  const padding = 16
+  const rightSafetyInset = Math.max(56, fontSize * 2)
+  const innerWidth = width - padding * 2 - rightSafetyInset
   const innerHeight = height - padding * 2
   const layout = fitRulesLayout({
     rulesText,
@@ -78,6 +88,8 @@ export function RulesBox({
     width: innerWidth,
     height: innerHeight,
     fontSize,
+    fontFamily,
+    italicFontFamily,
   })
   const rulesHeight = layout.rulesLines.reduce((sum, line) => sum + line.height, 0)
   const dividerVisible = layout.hasFlavor && layout.rulesLines.length > 0
@@ -150,6 +162,23 @@ function renderLine({
         const segmentX = cursorX
         cursorX += segment.width
 
+        if (segment.kind === 'text') {
+          return (
+            <Text
+              key={`${key}-${index}`}
+              x={segmentX}
+              y={y}
+              text={segment.text}
+              fontSize={segment.fontSize}
+              fontFamily={segment.fontFamily}
+              fontStyle={segment.fontStyle}
+              fill={segment.fill}
+              wrap="none"
+              listening={false}
+            />
+          )
+        }
+
         return (
           <ManaText
             key={`${key}-${index}`}
@@ -175,12 +204,16 @@ function fitRulesLayout({
   width,
   height,
   fontSize,
+  fontFamily,
+  italicFontFamily,
 }: {
   rulesText: string
   flavorText?: string | undefined
   width: number
   height: number
   fontSize: number
+  fontFamily: string
+  italicFontFamily: string
 }) {
   let currentFontSize = fontSize
 
@@ -188,11 +221,15 @@ function fitRulesLayout({
     const rulesLines = layoutText(rulesText, width, currentFontSize, {
       baseFill: TEXT_FILL,
       flavor: false,
+      fontFamily,
+      italicFontFamily,
     })
     const flavorLines = flavorText
       ? layoutText(flavorText, width, Math.max(currentFontSize - 1.5, MIN_FONT_SIZE), {
           baseFill: FLAVOR_FILL,
           flavor: true,
+          fontFamily,
+          italicFontFamily,
         })
       : []
 
@@ -223,20 +260,24 @@ function layoutText(
   text: string,
   width: number,
   fontSize: number,
-  options: { baseFill: string; flavor: boolean },
+  options: {
+    baseFill: string
+    flavor: boolean
+    fontFamily: string
+    italicFontFamily: string
+  },
 ) {
-  const styledTokens = buildStyledTokens(text, fontSize, options)
-  const units = expandUnits(styledTokens)
+  const styledTokens = buildStyledTokens(normalizeRulesDisplayText(text), fontSize, options)
   const paragraphs: StyledToken[][] = []
   let currentParagraph: StyledToken[] = []
 
-  for (const unit of units) {
-    if (unit.kind === 'break') {
+  for (const token of styledTokens) {
+    if (token.kind === 'break') {
       paragraphs.push(trimLine(currentParagraph))
       currentParagraph = []
       continue
     }
-    currentParagraph.push(unit)
+    currentParagraph.push(token)
   }
 
   if (currentParagraph.length > 0 || paragraphs.length === 0) {
@@ -249,7 +290,12 @@ function layoutText(
 function buildStyledTokens(
   text: string,
   fontSize: number,
-  options: { baseFill: string; flavor: boolean },
+  options: {
+    baseFill: string
+    flavor: boolean
+    fontFamily: string
+    italicFontFamily: string
+  },
 ) {
   const tokens = tokenizeManaText(text)
   const styledTokens: StyledToken[] = []
@@ -262,7 +308,7 @@ function buildStyledTokens(
         kind: 'symbol',
         value: token.value,
         fontSize: reminder ? Math.max(fontSize - 2, MIN_FONT_SIZE) : fontSize,
-        fontFamily: RULES_FONT_FAMILY,
+        fontFamily: reminder || options.flavor ? options.italicFontFamily : options.fontFamily,
         fill: reminder ? REMINDER_FILL : options.baseFill,
         fontStyle: options.flavor ? 'italic' : 'normal',
       })
@@ -282,7 +328,7 @@ function buildStyledTokens(
           kind: 'break',
           value: '\n',
           fontSize,
-          fontFamily: RULES_FONT_FAMILY,
+          fontFamily: options.flavor ? options.italicFontFamily : options.fontFamily,
           fill: options.baseFill,
           fontStyle: options.flavor ? 'italic' : 'normal',
         })
@@ -366,34 +412,21 @@ function makeTextToken(
   value: string,
   fontSize: number,
   reminder: boolean,
-  options: { baseFill: string; flavor: boolean },
+  options: {
+    baseFill: string
+    flavor: boolean
+    fontFamily: string
+    italicFontFamily: string
+  },
 ): StyledToken {
   return {
     kind: 'text',
     value,
     fontSize: reminder ? Math.max(fontSize - 2, MIN_FONT_SIZE) : fontSize,
-    fontFamily: RULES_FONT_FAMILY,
+    fontFamily: reminder || options.flavor ? options.italicFontFamily : options.fontFamily,
     fill: reminder ? REMINDER_FILL : options.baseFill,
     fontStyle: options.flavor ? 'italic' : 'normal',
   }
-}
-
-function expandUnits(tokens: StyledToken[]) {
-  const units: StyledToken[] = []
-
-  for (const token of tokens) {
-    if (token.kind !== 'text') {
-      units.push(token)
-      continue
-    }
-
-    const parts = token.value.match(/\S+|\s+/g) ?? []
-    for (const part of parts) {
-      units.push({ ...token, value: part })
-    }
-  }
-
-  return units
 }
 
 function trimLine(tokens: StyledToken[]) {

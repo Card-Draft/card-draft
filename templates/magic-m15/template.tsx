@@ -15,7 +15,7 @@
  *   P/T box:   x=618 y=940  w=96  h=46
  */
 
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Group, Image as KonvaImage, Text } from 'react-konva'
 import useImage from 'use-image'
 import type { TemplateProps } from '@card-draft/template-runtime'
@@ -54,8 +54,17 @@ const RARITY_ICON_X = TYPE_BAR.x + TYPE_BAR.w - RARITY_ICON_SIZE - 6
 const RARITY_ICON_Y = TYPE_BAR.y + (TYPE_BAR.h - RARITY_ICON_SIZE) / 2
 
 const BAR_PAD = 14
-const TITLE_FONT = 'Georgia'
-const BODY_FONT = 'Georgia'
+const NAME_FONT = 'CardDraft Matrix Bold'
+const TYPE_FONT = 'CardDraft ModMatrix'
+const BODY_FONT = 'CardDraft Plantin'
+const BODY_ITALIC_FONT = 'CardDraft Plantin Italic'
+
+const TEMPLATE_FONTS = [
+  { family: NAME_FONT, file: 'MatrixBold.ttf' },
+  { family: TYPE_FONT, file: 'ModMatrix.ttf' },
+  { family: BODY_FONT, file: 'mplantin.ttf' },
+  { family: BODY_ITALIC_FONT, file: 'mplantinit.ttf' },
+] as const
 
 interface AssetStatus {
   pending: boolean
@@ -76,12 +85,63 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max)
 }
 
+const loadedFontFamilies = new Set<string>()
+
+function encodeFontUrl(url: string) {
+  return url.replace(/"/g, '%22').replace(/\(/g, '%28').replace(/\)/g, '%29').replace(/ /g, '%20')
+}
+
+function useTemplateFonts(assetsPath: string) {
+  const [loaded, setLoaded] = useState(false)
+
+  const fontDefinitions = useMemo(
+    () => TEMPLATE_FONTS.map((font) => ({ ...font, src: `${assetsPath}/fonts/${font.file}` })),
+    [assetsPath],
+  )
+
+  useEffect(() => {
+    let cancelled = false
+
+    void (async () => {
+      if (typeof FontFace === 'undefined' || typeof document === 'undefined') {
+        setLoaded(true)
+        return
+      }
+
+      try {
+        await Promise.all(
+          fontDefinitions.map(async (font) => {
+            if (loadedFontFamilies.has(font.family)) return
+            const face = new FontFace(font.family, `url("${encodeFontUrl(font.src)}")`)
+            await face.load()
+            document.fonts.add(face)
+            loadedFontFamilies.add(font.family)
+          }),
+        )
+      } catch {
+        // Fall back to system fonts if bundled fonts fail to load.
+      }
+
+      if (!cancelled) {
+        setLoaded(true)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [fontDefinitions])
+
+  return loaded
+}
+
 export default function M15Template({
   fields,
   assetsPath,
   setMetadata,
   onAssetStatusChange,
 }: M15TemplateProps) {
+  const fontsLoaded = useTemplateFonts(assetsPath)
   const color = frameColor(fields)
   const creature = isCreature(fields)
   const land = isLand(fields)
@@ -113,20 +173,23 @@ export default function M15Template({
   useEffect(() => {
     if (!onAssetStatusChange) return
     onAssetStatusChange({
-      pending: frameStatus === 'loading' || Boolean(fields.art),
+      pending: !fontsLoaded || frameStatus === 'loading' || Boolean(fields.art),
       error: frameStatus === 'failed' ? `Failed to load frame: ${frameSrc}` : null,
     })
-  }, [fields.art, frameSrc, frameStatus, onAssetStatusChange])
+  }, [fields.art, fontsLoaded, frameSrc, frameStatus, onAssetStatusChange])
 
   const handleImageStatusChange = useCallback(
     (status: { src: string | null; loaded: boolean; error: string | null }) => {
       onAssetStatusChange?.({
-        pending: frameStatus === 'loading' || (Boolean(status.src) && !status.loaded && !status.error),
+        pending:
+          !fontsLoaded ||
+          frameStatus === 'loading' ||
+          (Boolean(status.src) && !status.loaded && !status.error),
         error: status.error ?? (frameStatus === 'failed' ? `Failed to load frame: ${frameSrc}` : null),
       })
       window.dispatchEvent(new CustomEvent('card-draft:image-status', { detail: status }))
     },
-    [frameSrc, frameStatus, onAssetStatusChange],
+    [fontsLoaded, frameSrc, frameStatus, onAssetStatusChange],
   )
 
   // Mana cost layout
@@ -178,8 +241,8 @@ export default function M15Template({
         width={nameTextWidth}
         text={fields.name || 'New Card'}
         fontSize={30}
-        fontFamily={TITLE_FONT}
-        fontStyle="bold"
+        fontFamily={NAME_FONT}
+        fontStyle="normal"
         fill={textFill}
       />
 
@@ -203,9 +266,9 @@ export default function M15Template({
         width={typeTextWidth}
         text={typeLineText}
         fontSize={22}
-        fontFamily={TITLE_FONT}
-        fontStyle="bold"
-        fill={textFill}
+        fontFamily={TYPE_FONT}
+        fontStyle="normal"
+        fill={textFill} 
       />
 
       {/* 6. Rarity icon */}
@@ -244,7 +307,9 @@ export default function M15Template({
         rulesText={fields.rulesText}
         flavorText={fields.flavorText}
         symbolBasePath={symbolsPath}
-        fontSize={24}
+        fontSize={28}
+        fontFamily={BODY_FONT}
+        italicFontFamily={BODY_ITALIC_FONT}
         background="transparent"
         stroke="transparent"
         strokeWidth={0}
