@@ -16,6 +16,7 @@ import { toast } from 'sonner'
 import type { M15Fields } from '@card-draft/templates/magic-m15/fields'
 import { getMergedFieldValues, parseCardFields } from '../../lib/cardFields'
 import { getMagicM15AssetsPath } from '../../lib/templateAssets'
+import { parseSetMetadata } from '../../lib/setMetadata'
 
 // Expose the stage ref globally so the export dialog can access it
 // This avoids prop-drilling the ref through many layers
@@ -30,6 +31,7 @@ export function CardCanvas() {
   const zoom = useUiStore((s) => s.zoom)
   const activeCardId = useEditorStore((s) => s.activeCardId)
   const fieldValues = useEditorStore((s) => s.fieldValues)
+  const activeSet = useEditorStore((s) => s.activeSet)
   const setFieldValues = useEditorStore((s) => s.setFieldValues)
   const markClean = useEditorStore((s) => s.markClean)
   const isDirty = useEditorStore((s) => s.isDirty)
@@ -175,6 +177,7 @@ export function CardCanvas() {
   }
 
   const assetsPath = getMagicM15AssetsPath()
+  const setMetadata = parseSetMetadata(activeSet?.metadata)
 
   return (
     <div className="flex h-full w-full bg-zinc-900 p-5">
@@ -217,6 +220,7 @@ export function CardCanvas() {
                       <M15Template
                         fields={mergedFields as unknown as M15Fields}
                         assetsPath={assetsPath}
+                        setMetadata={setMetadata}
                       />
                     </Suspense>
                   </CanvasErrorBoundary>

@@ -1,16 +1,4 @@
-/**
- * RarityIcon — renders an uploaded SVG icon with a rarity gradient or solid fill
- * composited onto its alpha mask.
- *
- * Technique:
- *   1. Draw the gradient (or solid color) onto an offscreen canvas
- *   2. Draw the SVG image on top using globalCompositeOperation='destination-in'
- *      → only pixels where the SVG is opaque survive, painted with the gradient
- *   3. For common rarity, draw a shadow outline behind the filled shape for contrast
- *   4. Use the composited canvas as a Konva Image source
- */
-
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Image as KonvaImage } from 'react-konva'
 import useImage from 'use-image'
 
@@ -23,8 +11,147 @@ interface RarityIconProps {
   size: number
   gradientStops?: GradientStop[]
   solidColor?: string
-  strokeColor?: string
+  strokeColor?: string | undefined
   strokeWidth?: number
+}
+
+const SHAPE_TAGS = new Set([
+  'path',
+  'circle',
+  'ellipse',
+  'polygon',
+  'polyline',
+  'rect',
+  'line',
+])
+
+const BLACK_VALUES = new Set(['#000', '#000000', 'black', 'rgb(0,0,0)', 'rgba(0,0,0,1)'])
+const WHITE_VALUES = new Set(['#fff', '#ffffff', 'white', 'rgb(255,255,255)', 'rgba(255,255,255,1)'])
+
+function normalizePaint(value: string | null | undefined) {
+  if (!value) return null
+  return value.trim().toLowerCase().replace(/\s+/g, '')
+}
+
+function isBlackPaint(value: string | null | undefined) {
+  const normalized = normalizePaint(value)
+  return normalized ? BLACK_VALUES.has(normalized) : false
+}
+
+function isWhitePaint(value: string | null | undefined) {
+  const normalized = normalizePaint(value)
+  return normalized ? WHITE_VALUES.has(normalized) : false
+}
+
+function parseStyleMap(styleValue: string | null) {
+  const entries = (styleValue ?? '')
+    .split(';')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => {
+      const [key, ...rest] = entry.split(':')
+      return [key?.trim(), rest.join(':').trim()] as const
+    })
+    .filter((entry): entry is readonly [string, string] => Boolean(entry[0]))
+
+  return new Map(entries)
+}
+
+function serializeStyleMap(styleMap: Map<string, string>) {
+  return [...styleMap.entries()].map(([key, value]) => `${key}:${value}`).join(';')
+}
+
+function buildProcessedSvgMarkup(
+  rawSvg: string,
+  gradientStops: GradientStop[],
+  solidColor: string,
+  strokeColor: string | undefined,
+) {
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(rawSvg, 'image/svg+xml')
+  const svg = doc.documentElement
+  if (!svg || svg.tagName.toLowerCase() !== 'svg') {
+    throw new Error('Invalid SVG')
+  }
+
+  const defs = doc.createElementNS('http://www.w3.org/2000/svg', 'defs')
+  const gradientId = `rarity-gradient-${Math.random().toString(36).slice(2, 10)}`
+
+  if (gradientStops.length >= 2) {
+    const gradient = doc.createElementNS('http://www.w3.org/2000/svg', 'linearGradient')
+    gradient.setAttribute('id', gradientId)
+    gradient.setAttribute('x1', '0%')
+    gradient.setAttribute('y1', '0%')
+    gradient.setAttribute('x2', '100%')
+    gradient.setAttribute('y2', '100%')
+
+    for (const stop of gradientStops) {
+      const stopNode = doc.createElementNS('http://www.w3.org/2000/svg', 'stop')
+      stopNode.setAttribute('offset', `${stop.offset * 100}%`)
+      stopNode.setAttribute('stop-color', stop.color)
+      gradient.appendChild(stopNode)
+    }
+
+    defs.appendChild(gradient)
+  }
+
+  svg.insertBefore(defs, svg.firstChild)
+
+  const nodes = Array.from(svg.querySelectorAll('*'))
+  for (const node of nodes) {
+    const tag = node.tagName.toLowerCase()
+    if (!SHAPE_TAGS.has(tag)) continue
+
+    const styleMap = parseStyleMap(node.getAttribute('style'))
+    const attrFill = node.getAttribute('fill')
+    const attrStroke = node.getAttribute('stroke')
+    const styleFill = styleMap.get('fill')
+    const styleStroke = styleMap.get('stroke')
+    const hasExplicitFill = attrFill !== null || styleFill !== undefined
+    const fillPaint = styleFill ?? attrFill
+    const strokePaint = styleStroke ?? attrStroke
+
+    const shouldTreatDefaultFillAsBlack =
+      !hasExplicitFill && tag !== 'line' && normalizePaint(strokePaint) !== 'none'
+
+    const replaceFill =
+      shouldTreatDefaultFillAsBlack ||
+      isBlackPaint(fillPaint)
+
+    if (replaceFill) {
+      const nextFill = gradientStops.length >= 2 ? `url(#${gradientId})` : solidColor
+      node.setAttribute('fill', nextFill)
+      styleMap.delete('fill')
+    } else if (isWhitePaint(fillPaint)) {
+      node.setAttribute('fill', strokeColor ?? '#ffffff')
+      styleMap.delete('fill')
+    }
+
+    if (isBlackPaint(strokePaint)) {
+      const nextStroke = gradientStops.length >= 2 ? `url(#${gradientId})` : solidColor
+      node.setAttribute('stroke', nextStroke)
+      styleMap.delete('stroke')
+    } else if (isWhitePaint(strokePaint)) {
+      node.setAttribute('stroke', strokeColor ?? '#ffffff')
+      styleMap.delete('stroke')
+    }
+
+    if (styleMap.size > 0) {
+      node.setAttribute('style', serializeStyleMap(styleMap))
+    } else {
+      node.removeAttribute('style')
+    }
+  }
+
+  return new XMLSerializer().serializeToString(doc)
+}
+
+async function readSvgText(src: string) {
+  const response = await fetch(src)
+  if (!response.ok) {
+    throw new Error(`Failed to read SVG: ${response.status}`)
+  }
+  return response.text()
 }
 
 export function RarityIcon({
@@ -35,65 +162,57 @@ export function RarityIcon({
   gradientStops = [],
   solidColor = '#000000',
   strokeColor,
-  strokeWidth = 2,
 }: RarityIconProps) {
-  const [svgImage, svgStatus] = useImage(src)
-  // Use a counter to force a new canvas object reference on each composite so Konva re-renders
-  const [, setTick] = useState(0)
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const [processedSrc, setProcessedSrc] = useState<string | null>(null)
+  const [objectUrl, setObjectUrl] = useState<string | null>(null)
+  const [image] = useImage(processedSrc ?? '')
+
+  const gradientKey = useMemo(
+    () => gradientStops.map((stop) => `${stop.offset}:${stop.color}`).join('|'),
+    [gradientStops],
+  )
 
   useEffect(() => {
-    if (!svgImage || svgStatus !== 'loaded') return
+    let cancelled = false
+    let nextObjectUrl: string | null = null
 
-    // 2× for crisp rendering at display size
-    const scale = 2
-    const dim = size * scale
+    void (async () => {
+      try {
+        const rawSvg = await readSvgText(src)
+        if (cancelled) return
 
-    const canvas = document.createElement('canvas')
-    canvas.width = dim
-    canvas.height = dim
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
+        const markup = buildProcessedSvgMarkup(rawSvg, gradientStops, solidColor, strokeColor)
+        const blob = new Blob([markup], { type: 'image/svg+xml' })
+        nextObjectUrl = URL.createObjectURL(blob)
 
-    // Step 1: fill (gradient or solid)
-    if (gradientStops.length >= 2) {
-      const grad = ctx.createLinearGradient(0, 0, dim, dim)
-      for (const stop of gradientStops) {
-        grad.addColorStop(stop.offset, stop.color)
+        if (cancelled) {
+          URL.revokeObjectURL(nextObjectUrl)
+          return
+        }
+
+        setProcessedSrc(nextObjectUrl)
+        setObjectUrl((previous) => {
+          if (previous) URL.revokeObjectURL(previous)
+          return nextObjectUrl
+        })
+      } catch {
+        setProcessedSrc(src)
       }
-      ctx.fillStyle = grad
-    } else {
-      ctx.fillStyle = solidColor
+    })()
+
+    return () => {
+      cancelled = true
+      if (nextObjectUrl) URL.revokeObjectURL(nextObjectUrl)
     }
-    ctx.fillRect(0, 0, dim, dim)
+  }, [src, gradientKey, solidColor, strokeColor, gradientStops])
 
-    // Step 2: mask to SVG shape
-    ctx.globalCompositeOperation = 'destination-in'
-    ctx.drawImage(svgImage, 0, 0, dim, dim)
-    ctx.globalCompositeOperation = 'source-over'
-
-    // Step 3: contrast outline drawn behind the filled shape
-    if (strokeColor && strokeWidth > 0) {
-      const outlineCanvas = document.createElement('canvas')
-      outlineCanvas.width = dim
-      outlineCanvas.height = dim
-      const oCtx = outlineCanvas.getContext('2d')
-      if (oCtx) {
-        oCtx.shadowColor = strokeColor
-        oCtx.shadowBlur = strokeWidth * scale * 2
-        oCtx.drawImage(svgImage, 0, 0, dim, dim)
-        ctx.globalCompositeOperation = 'destination-over'
-        ctx.drawImage(outlineCanvas, 0, 0)
-        ctx.globalCompositeOperation = 'source-over'
-      }
+  useEffect(() => {
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
     }
+  }, [objectUrl])
 
-    canvasRef.current = canvas
-    // New canvas object → Konva sees the change
-    setTick((t) => t + 1)
-  }, [svgImage, svgStatus, size, gradientStops, solidColor, strokeColor, strokeWidth])
-
-  if (!canvasRef.current) return null
+  if (!image) return null
 
   return (
     <KonvaImage
@@ -101,7 +220,7 @@ export function RarityIcon({
       y={y}
       width={size}
       height={size}
-      image={canvasRef.current}
+      image={image}
       listening={false}
     />
   )

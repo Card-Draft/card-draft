@@ -109,13 +109,13 @@ export type RarityGradientStop = { offset: number; color: string }
 
 /**
  * Gradient stops for rarity icon fill.
- * common: auto-computed (black or white) based on frame darkness — handled in template.
+ * common: plain black fill with white outline
  * uncommon: silver metallic
  * rare: gold metallic
  * mythic: orange → red → orange
  */
 export const RARITY_GRADIENTS: Record<string, RarityGradientStop[]> = {
-  common: [], // handled as solid color (black/white) with contrast stroke
+  common: [],
   uncommon: [
     { offset: 0, color: '#c0c8d0' },
     { offset: 0.3, color: '#e8eef4' },

@@ -15,4 +15,6 @@ export interface TemplateProps<T extends Record<string, string | undefined> = Re
   fields: T
   /** Absolute path to the template's assets directory */
   assetsPath: string
+  /** Flexible set-level metadata such as rarity icon or set code */
+  setMetadata?: Record<string, string | undefined>
 }

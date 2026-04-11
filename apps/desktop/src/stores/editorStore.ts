@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { StateCreator } from 'zustand'
 import { temporal } from 'zundo'
 import type { CardDraftSet } from '@card-draft/core/types'
+import { parseSetMetadata, serializeSetMetadata } from '../lib/setMetadata'
 
 interface EditorState {
   // Sets
@@ -23,6 +24,7 @@ interface EditorState {
   setFieldValue: (fieldId: string, value: string) => void
   setFieldValues: (values: Record<string, string>) => void
   updateSetName: (name: string) => void
+  updateSetRarityIcon: (rarityIcon: string) => void
   markClean: () => void
   canUndo: () => boolean
   canRedo: () => boolean
@@ -111,6 +113,31 @@ const editorStoreCreator: StateCreator<EditorState, [['temporal', unknown]], []>
     const { activeSetId } = get()
     if (activeSetId) {
       void window.api.sets.update(activeSetId, { name })
+    }
+  },
+
+  updateSetRarityIcon: (rarityIcon) => {
+    const currentSet = get().activeSet
+    if (!currentSet) return
+
+    const nextMetadata = parseSetMetadata(currentSet.metadata)
+    if (rarityIcon) {
+      nextMetadata.rarityIcon = rarityIcon
+    } else {
+      delete nextMetadata.rarityIcon
+    }
+
+    const metadata = serializeSetMetadata(nextMetadata)
+
+    set((s) => ({
+      activeSet: s.activeSet ? { ...s.activeSet, metadata } : null,
+      availableSets: s.availableSets.map((set) =>
+        set.id === s.activeSetId ? { ...set, metadata } : set,
+      ),
+    }))
+
+    if (currentSet.id) {
+      void window.api.sets.update(currentSet.id, { metadata })
     }
   },
 

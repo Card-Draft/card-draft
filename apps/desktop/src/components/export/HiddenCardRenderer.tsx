@@ -6,9 +6,11 @@ import M15Template from '@card-draft/templates/magic-m15/template'
 import type { M15Fields } from '@card-draft/templates/magic-m15/fields'
 import { getMergedFieldValues, parseCardFields } from '../../lib/cardFields'
 import { getMagicM15AssetsPath } from '../../lib/templateAssets'
+import { parseSetMetadata } from '../../lib/setMetadata'
 
 interface RenderRequest {
   serializedFields: string
+  serializedSetMetadata?: string | undefined
   pixelRatio: number
   resolve: (dataUrl: string) => void
   reject: (error: Error) => void
@@ -21,9 +23,11 @@ let renderQueue: Promise<unknown> = Promise.resolve()
 
 export function renderCardImageForExport({
   serializedFields,
+  serializedSetMetadata,
   pixelRatio,
 }: {
   serializedFields: string
+  serializedSetMetadata?: string | undefined
   pixelRatio: number
 }) {
   const job = renderQueue.catch(() => undefined).then(
@@ -34,7 +38,7 @@ export function renderCardImageForExport({
           return
         }
 
-        enqueueRenderRequest({ serializedFields, pixelRatio }, resolve, reject)
+        enqueueRenderRequest({ serializedFields, serializedSetMetadata, pixelRatio }, resolve, reject)
       }),
   )
 
@@ -96,6 +100,7 @@ export function HiddenCardRenderer() {
   if (!request) return null
 
   const fields = getMergedFieldValues(parseCardFields(request.serializedFields)) as unknown as M15Fields
+  const setMetadata = parseSetMetadata(request.serializedSetMetadata)
 
   return (
     <div className="pointer-events-none fixed -left-[99999px] top-0 opacity-0">
@@ -104,6 +109,7 @@ export function HiddenCardRenderer() {
           <M15Template
             fields={fields}
             assetsPath={getMagicM15AssetsPath()}
+            setMetadata={setMetadata}
             onAssetStatusChange={(status) => setAssetPending(status.pending)}
           />
         </Layer>

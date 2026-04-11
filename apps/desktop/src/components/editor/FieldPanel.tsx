@@ -38,7 +38,7 @@ export function FieldPanel({ cardId }: FieldPanelProps) {
   return (
     <div className="space-y-5 px-4 py-4">
       {fields.map((field) => {
-        if (field.id.startsWith('artCrop')) return null
+        if (field.id.startsWith('artCrop') || field.id === 'rarityIcon') return null
 
         // Skip conditional fields that don't apply
         if (field.conditional === 'isCreature' && !isCreature) return null

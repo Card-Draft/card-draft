@@ -13,6 +13,7 @@ export function ExportDialog() {
   const close = useUiStore((s) => s.closeExportDialog)
   const activeCardId = useEditorStore((s) => s.activeCardId)
   const activeSetId = useEditorStore((s) => s.activeSetId)
+  const activeSet = useEditorStore((s) => s.activeSet)
   const fieldValues = useEditorStore((s) => s.fieldValues)
 
   const [preset, setPreset] = useState<ExportPreset>('print300')
@@ -66,6 +67,7 @@ export function ExportDialog() {
           card.id === activeCardId ? JSON.stringify(fieldValues) : card.fields ?? '{}'
         const dataUrl = await renderCardImageForExport({
           serializedFields,
+          serializedSetMetadata: activeSet?.metadata,
           pixelRatio: resolution.pixelRatio,
         })
         const safeName = card.id.slice(0, 8)
@@ -103,6 +105,7 @@ export function ExportDialog() {
 
     return renderCardImageForExport({
       serializedFields: JSON.stringify(fieldValues),
+      serializedSetMetadata: activeSet?.metadata,
       pixelRatio: resolution.pixelRatio,
     })
   }
@@ -114,6 +117,7 @@ export function ExportDialog() {
       dataUrls.push(
         await renderCardImageForExport({
           serializedFields: card.id === activeCardId ? JSON.stringify(fieldValues) : card.fields ?? '{}',
+          serializedSetMetadata: activeSet?.metadata,
           pixelRatio: resolution.pixelRatio,
         }),
       )

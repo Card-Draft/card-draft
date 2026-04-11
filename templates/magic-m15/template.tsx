@@ -76,7 +76,12 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max)
 }
 
-export default function M15Template({ fields, assetsPath, onAssetStatusChange }: M15TemplateProps) {
+export default function M15Template({
+  fields,
+  assetsPath,
+  setMetadata,
+  onAssetStatusChange,
+}: M15TemplateProps) {
   const color = frameColor(fields)
   const creature = isCreature(fields)
   const land = isLand(fields)
@@ -95,9 +100,9 @@ export default function M15Template({ fields, assetsPath, onAssetStatusChange }:
   // Rarity icon gradient / solid color
   const rarityGradient = RARITY_GRADIENTS[fields.rarity] ?? []
   const isCommon = fields.rarity === 'common'
-  // Common: white on dark frames, black on light frames — with contrasting stroke
-  const commonFill = isDark ? '#ffffff' : '#000000'
-  const commonStroke = isDark ? '#000000' : '#ffffff'
+  const commonFill = '#000000'
+  const commonStroke = '#ffffff'
+  const rarityIconSrc = setMetadata?.rarityIcon ?? fields.rarityIcon
   // Fallback dot color (when no SVG uploaded)
   const rarityDotColor = RARITY_COLORS[fields.rarity] ?? '#b0b0b0'
 
@@ -204,15 +209,15 @@ export default function M15Template({ fields, assetsPath, onAssetStatusChange }:
       />
 
       {/* 6. Rarity icon */}
-      {fields.rarityIcon ? (
+      {rarityIconSrc ? (
         <RarityIcon
-          src={fields.rarityIcon}
+          src={rarityIconSrc}
           x={RARITY_ICON_X}
           y={RARITY_ICON_Y}
           size={RARITY_ICON_SIZE}
-          gradientStops={isCommon ? [] : rarityGradient}
+          gradientStops={rarityGradient}
           solidColor={isCommon ? commonFill : rarityDotColor}
-          strokeColor={isCommon ? commonStroke : undefined}
+          strokeColor={isCommon ? commonStroke : '#ffffff'}
           strokeWidth={2}
         />
       ) : (
