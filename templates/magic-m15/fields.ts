@@ -4,8 +4,8 @@ export const M15FieldsSchema = z.object({
   name: z.string().default('New Card'),
   manaCost: z.string().default(''),
   color: z
-    .enum(['white', 'blue', 'black', 'red', 'green', 'gold', 'colorless', 'land'])
-    .default('colorless'),
+    .enum(['auto', 'white', 'blue', 'black', 'red', 'green', 'gold', 'colorless', 'land'])
+    .default('auto'),
   supertype: z.string().default(''),
   type: z.string().default('Instant'),
   subtype: z.string().default(''),

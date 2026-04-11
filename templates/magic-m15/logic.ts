@@ -83,6 +83,7 @@ export function inferredFrameColor(fields: M15Fields): FrameColor {
 }
 
 export function frameColor(fields: M15Fields): FrameColor {
+  if (fields.color && fields.color !== 'auto') return fields.color as FrameColor
   return inferredFrameColor(fields)
 }
 

@@ -6,7 +6,7 @@ function makeFields(overrides: Partial<M15Fields> = {}): M15Fields {
   return {
     name: 'Test Card',
     manaCost: '',
-    color: 'colorless',
+    color: 'auto',
     supertype: '',
     type: 'Instant',
     subtype: '',
@@ -50,16 +50,20 @@ describe('isLand', () => {
 })
 
 describe('frameColor', () => {
+  it('uses explicit override color when selected', () => {
+    expect(frameColor(makeFields({ manaCost: '{G}{U}', color: 'blue' }))).toBe('blue')
+  })
+
   it('returns land for land cards with no explicit color', () => {
-    expect(frameColor(makeFields({ type: 'Basic Land', color: 'colorless' }))).toBe('land')
+    expect(frameColor(makeFields({ type: 'Basic Land', color: 'auto' }))).toBe('land')
   })
 
   it('defaults to colorless when there is no colored mana in the cost', () => {
-    expect(frameColor(makeFields({ color: 'colorless', type: 'Artifact' }))).toBe('colorless')
+    expect(frameColor(makeFields({ color: 'auto', type: 'Artifact' }))).toBe('colorless')
   })
 
   it('derives monocolor frames from mana cost', () => {
-    expect(frameColor(makeFields({ manaCost: '{G}', color: 'blue' }))).toBe('green')
+    expect(frameColor(makeFields({ manaCost: '{G}', color: 'auto' }))).toBe('green')
   })
 
   it('derives gold frames from multicolor mana cost', () => {

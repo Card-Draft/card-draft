@@ -8,7 +8,7 @@
   "fields": [
     { "id": "name", "type": "text", "label": "Card Name", "required": true, "defaultValue": "New Card" },
     { "id": "manaCost", "type": "mana", "label": "Mana Cost", "defaultValue": "" },
-    { "id": "color", "type": "select", "label": "Color", "options": ["white", "blue", "black", "red", "green", "gold", "colorless", "land"], "defaultValue": "colorless" },
+    { "id": "color", "type": "select", "label": "Color", "options": ["auto", "white", "blue", "black", "red", "green", "gold", "colorless", "land"], "defaultValue": "auto" },
     { "id": "supertype", "type": "text", "label": "Supertype", "defaultValue": "" },
     { "id": "type", "type": "text", "label": "Card Type", "required": true, "defaultValue": "Instant" },
     { "id": "subtype", "type": "text", "label": "Subtype", "defaultValue": "" },
