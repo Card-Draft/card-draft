@@ -8,6 +8,7 @@
  */
 
 import type { M15Fields } from './fields'
+import { normalizeManaSymbol, tokenizeCanonicalManaCost } from '@card-draft/core'
 
 export function isCreature(fields: M15Fields): boolean {
   return fields.type.toLowerCase().includes('creature')
@@ -40,12 +41,22 @@ const MANA_TO_FRAME_COLOR: Record<string, Extract<FrameColor, 'white' | 'blue' |
   G: 'green',
 }
 
-function manaColors(fields: M15Fields) {
-  const colors = new Set<FrameColor>()
-  const matches = fields.manaCost.match(/\{([^}]+)\}/g) ?? []
+const FRAME_COLOR_ORDER: Array<Extract<FrameColor, 'white' | 'blue' | 'black' | 'red' | 'green'>> = [
+  'white',
+  'blue',
+  'black',
+  'red',
+  'green',
+]
 
-  for (const match of matches) {
-    const symbol = match.slice(1, -1).toUpperCase()
+export function manaFrameColors(fields: M15Fields) {
+  const colors = new Set<Extract<FrameColor, 'white' | 'blue' | 'black' | 'red' | 'green'>>()
+  const tokens = tokenizeCanonicalManaCost(fields.manaCost)
+
+  for (const token of tokens) {
+    if (token.kind !== 'symbol') continue
+
+    const symbol = normalizeManaSymbol(token.value)
     const parts = symbol.split('/')
 
     for (const part of parts) {
@@ -56,22 +67,22 @@ function manaColors(fields: M15Fields) {
     }
   }
 
-  return colors
+  return FRAME_COLOR_ORDER.filter((color): color is Extract<FrameColor, 'white' | 'blue' | 'black' | 'red' | 'green'> =>
+    colors.has(color),
+  )
 }
 
 export function inferredFrameColor(fields: M15Fields): FrameColor {
   if (isLand(fields)) return 'land'
 
-  const colors = manaColors(fields)
-  if (colors.size === 0) return 'colorless'
-  if (colors.size > 1) return 'gold'
+  const colors = manaFrameColors(fields)
+  if (colors.length === 0) return 'colorless'
+  if (colors.length > 1) return 'gold'
 
-  return [...colors][0] ?? 'colorless'
+  return colors[0] ?? 'colorless'
 }
 
 export function frameColor(fields: M15Fields): FrameColor {
-  if (fields.color === 'land') return 'land'
-  if (fields.color && fields.color !== 'colorless') return fields.color as FrameColor
   return inferredFrameColor(fields)
 }
 
@@ -95,6 +106,16 @@ export const FRAME_COLORS: Record<FrameColor, string> = {
   gold: '#d4af37',
   colorless: '#b0b0b0',
   land: '#8fbc8f',
+}
+
+export function multicolorFrameGradient(fields: M15Fields) {
+  const colors = manaFrameColors(fields)
+  if (colors.length <= 1) return null
+
+  return colors.map((color, index) => {
+    const position = colors.length === 1 ? 1 : index / (colors.length - 1)
+    return [position, FRAME_COLORS[color]] as const
+  })
 }
 
 /** Rarity gem colors (fallback dot when no SVG icon uploaded) */

@@ -16,7 +16,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Group, Image as KonvaImage, Text } from 'react-konva'
+import { Group, Image as KonvaImage, Rect, Text } from 'react-konva'
 import useImage from 'use-image'
 import type { TemplateProps } from '@card-draft/template-runtime'
 import {
@@ -31,8 +31,9 @@ import type { M15Fields } from './fields'
 import {
   isCreature,
   isLand,
-  frameColor,
-  typeLine,
+    frameColor,
+    multicolorFrameGradient,
+    typeLine,
   RARITY_COLORS,
   RARITY_GRADIENTS,
   DARK_FRAMES,
@@ -54,6 +55,10 @@ const RARITY_ICON_X = TYPE_BAR.x + TYPE_BAR.w - RARITY_ICON_SIZE - 6
 const RARITY_ICON_Y = TYPE_BAR.y + (TYPE_BAR.h - RARITY_ICON_SIZE) / 2
 
 const BAR_PAD = 14
+const NAME_BAR_RADIUS = 12
+const TYPE_BAR_RADIUS = 10
+const TEXT_BOX_RADIUS = 10
+const PT_BOX_RADIUS = 10
 const NAME_FONT = 'CardDraft Matrix Bold'
 const TYPE_FONT = 'CardDraft ModMatrix'
 const BODY_FONT = 'CardDraft Plantin'
@@ -148,6 +153,7 @@ export default function M15Template({
 }: M15TemplateProps) {
   const fontsLoaded = useTemplateFonts(assetsPath)
   const color = frameColor(fields)
+  const frameGradient = multicolorFrameGradient(fields)
   const creature = isCreature(fields)
   const land = isLand(fields)
   const typeLineText = normalizeTypeLineDisplayText(typeLine(fields))
@@ -209,6 +215,11 @@ export default function M15Template({
   // Type line width leaves room for rarity icon
   const typeTextWidth = TYPE_BAR.w - BAR_PAD * 2 - RARITY_ICON_SIZE - 12
 
+  const multicolorOutline =
+    color === 'gold' && frameGradient
+      ? frameGradient.flatMap(([offset, hex]) => [offset, hex])
+      : null
+
   return (
     <Group listening={false}>
       {/* 1. Frame SVG — card background, all bars, borders */}
@@ -224,6 +235,61 @@ export default function M15Template({
       ) : (
         <Text x={20} y={20} text="Loading frame…" fontSize={14} fill="#888" listening={false} />
       )}
+
+      {multicolorOutline ? (
+        <>
+          <Rect
+            x={NAME_BAR.x}
+            y={NAME_BAR.y}
+            width={NAME_BAR.w}
+            height={NAME_BAR.h}
+            cornerRadius={NAME_BAR_RADIUS}
+            strokeWidth={3}
+            strokeLinearGradientStartPoint={{ x: NAME_BAR.x, y: NAME_BAR.y }}
+            strokeLinearGradientEndPoint={{ x: NAME_BAR.x + NAME_BAR.w, y: NAME_BAR.y + NAME_BAR.h }}
+            strokeLinearGradientColorStops={multicolorOutline}
+            listening={false}
+          />
+          <Rect
+            x={TYPE_BAR.x}
+            y={TYPE_BAR.y}
+            width={TYPE_BAR.w}
+            height={TYPE_BAR.h}
+            cornerRadius={TYPE_BAR_RADIUS}
+            strokeWidth={3}
+            strokeLinearGradientStartPoint={{ x: TYPE_BAR.x, y: TYPE_BAR.y }}
+            strokeLinearGradientEndPoint={{ x: TYPE_BAR.x + TYPE_BAR.w, y: TYPE_BAR.y + TYPE_BAR.h }}
+            strokeLinearGradientColorStops={multicolorOutline}
+            listening={false}
+          />
+          <Rect
+            x={TEXT_BOX.x}
+            y={TEXT_BOX.y}
+            width={TEXT_BOX.w}
+            height={TEXT_BOX.h}
+            cornerRadius={TEXT_BOX_RADIUS}
+            strokeWidth={3}
+            strokeLinearGradientStartPoint={{ x: TEXT_BOX.x, y: TEXT_BOX.y }}
+            strokeLinearGradientEndPoint={{ x: TEXT_BOX.x + TEXT_BOX.w, y: TEXT_BOX.y + TEXT_BOX.h }}
+            strokeLinearGradientColorStops={multicolorOutline}
+            listening={false}
+          />
+          {creature && (fields.power || fields.toughness) ? (
+            <Rect
+              x={PT_BOX.x}
+              y={PT_BOX.y}
+              width={PT_BOX.w}
+              height={PT_BOX.h}
+              cornerRadius={PT_BOX_RADIUS}
+              strokeWidth={3}
+              strokeLinearGradientStartPoint={{ x: PT_BOX.x, y: PT_BOX.y }}
+              strokeLinearGradientEndPoint={{ x: PT_BOX.x + PT_BOX.w, y: PT_BOX.y + PT_BOX.h }}
+              strokeLinearGradientColorStops={multicolorOutline}
+              listening={false}
+            />
+          ) : null}
+        </>
+      ) : null}
 
       {/* 2. Art */}
       <ArtBox

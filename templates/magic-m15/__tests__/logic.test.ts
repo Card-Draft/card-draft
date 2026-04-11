@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isCreature, isLand, frameColor, typeLine } from '../logic'
+import { frameColor, isCreature, isLand, manaFrameColors, multicolorFrameGradient, typeLine } from '../logic'
 import type { M15Fields } from '../fields'
 
 function makeFields(overrides: Partial<M15Fields> = {}): M15Fields {
@@ -50,16 +50,36 @@ describe('isLand', () => {
 })
 
 describe('frameColor', () => {
-  it('uses explicit color when set', () => {
-    expect(frameColor(makeFields({ color: 'blue' }))).toBe('blue')
-  })
-
   it('returns land for land cards with no explicit color', () => {
     expect(frameColor(makeFields({ type: 'Basic Land', color: 'colorless' }))).toBe('land')
   })
 
-  it('defaults to colorless', () => {
+  it('defaults to colorless when there is no colored mana in the cost', () => {
     expect(frameColor(makeFields({ color: 'colorless', type: 'Artifact' }))).toBe('colorless')
+  })
+
+  it('derives monocolor frames from mana cost', () => {
+    expect(frameColor(makeFields({ manaCost: '{G}', color: 'blue' }))).toBe('green')
+  })
+
+  it('derives gold frames from multicolor mana cost', () => {
+    expect(frameColor(makeFields({ manaCost: '{G}{U}' }))).toBe('gold')
+  })
+})
+
+describe('manaFrameColors', () => {
+  it('extracts canonical mana colors from costs', () => {
+    expect(manaFrameColors(makeFields({ manaCost: '{G}{U}' }))).toEqual(['blue', 'green'])
+    expect(manaFrameColors(makeFields({ manaCost: '{2/W}{G/U}{C}' }))).toEqual(['white', 'blue', 'green'])
+  })
+})
+
+describe('multicolorFrameGradient', () => {
+  it('builds gradient stops for multicolor costs', () => {
+    expect(multicolorFrameGradient(makeFields({ manaCost: '{G}{U}' }))).toEqual([
+      [0, '#b3c9e3'],
+      [1, '#7db57d'],
+    ])
   })
 })
 
