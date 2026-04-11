@@ -1,4 +1,10 @@
 import { Group, Rect } from 'react-konva'
+import {
+  materializeRichInlineLineRange,
+  prepareRichInline,
+  walkRichInlineLineRanges,
+  type RichInlineItem,
+} from '@chenglou/pretext/rich-inline'
 import { ManaText } from './ManaText'
 import { tokenizeManaText } from './manaTokenize'
 
@@ -28,6 +34,8 @@ interface StyledToken {
 
 interface LineSegment {
   text: string
+  pretextText?: string
+  kind: 'text' | 'symbol'
   fontSize: number
   fontFamily: string
   fill: string
@@ -43,7 +51,8 @@ interface LineLayout {
 const TEXT_FILL = '#111111'
 const REMINDER_FILL = '#4b5563'
 const FLAVOR_FILL = '#333333'
-const MIN_FONT_SIZE = 11
+const MIN_FONT_SIZE = 12
+const FONT_SIZE_STEP = 0.5
 const RULES_FONT_FAMILY = 'Georgia'
 
 export function RulesBox({
@@ -53,7 +62,7 @@ export function RulesBox({
   height,
   rulesText,
   flavorText,
-  fontSize = 15,
+  fontSize = 16,
   symbolBasePath,
   background = 'rgba(255,255,255,0.85)',
   stroke = 'rgba(0,0,0,0.45)',
@@ -181,7 +190,7 @@ function fitRulesLayout({
       flavor: false,
     })
     const flavorLines = flavorText
-      ? layoutText(flavorText, width, Math.max(currentFontSize - 1, MIN_FONT_SIZE), {
+      ? layoutText(flavorText, width, Math.max(currentFontSize - 1.5, MIN_FONT_SIZE), {
           baseFill: FLAVOR_FILL,
           flavor: true,
         })
@@ -192,7 +201,7 @@ function fitRulesLayout({
     const dividerHeight = flavorLines.length > 0 && rulesLines.length > 0 ? 9 : 0
     const totalHeight = rulesHeight + dividerHeight + flavorHeight
 
-    if (totalHeight <= height || currentFontSize === MIN_FONT_SIZE) {
+    if (totalHeight <= height || currentFontSize <= MIN_FONT_SIZE) {
       return {
         rulesLines,
         flavorLines,
@@ -200,7 +209,7 @@ function fitRulesLayout({
       }
     }
 
-    currentFontSize -= 1
+    currentFontSize = Math.max(MIN_FONT_SIZE, currentFontSize - FONT_SIZE_STEP)
   }
 
   return {
@@ -218,40 +227,23 @@ function layoutText(
 ) {
   const styledTokens = buildStyledTokens(text, fontSize, options)
   const units = expandUnits(styledTokens)
-  const lines: StyledToken[][] = []
-  let currentLine: StyledToken[] = []
-  let currentWidth = 0
+  const paragraphs: StyledToken[][] = []
+  let currentParagraph: StyledToken[] = []
 
   for (const unit of units) {
     if (unit.kind === 'break') {
-      lines.push(trimLine(currentLine))
-      currentLine = []
-      currentWidth = 0
+      paragraphs.push(trimLine(currentParagraph))
+      currentParagraph = []
       continue
     }
-
-    const unitWidth = measureToken(unit)
-    const isWhitespace = unit.kind === 'text' && /^\s+$/.test(unit.value)
-
-    if (!isWhitespace && currentLine.length > 0 && currentWidth + unitWidth > width) {
-      lines.push(trimLine(currentLine))
-      currentLine = []
-      currentWidth = 0
-    }
-
-    if (isWhitespace && currentLine.length === 0) {
-      continue
-    }
-
-    currentLine.push(unit)
-    currentWidth += unitWidth
+    currentParagraph.push(unit)
   }
 
-  if (currentLine.length > 0 || lines.length === 0) {
-    lines.push(trimLine(currentLine))
+  if (currentParagraph.length > 0 || paragraphs.length === 0) {
+    paragraphs.push(trimLine(currentParagraph))
   }
 
-  return lines.map(buildLineLayout)
+  return paragraphs.flatMap((paragraph) => layoutParagraphWithPretext(paragraph, width, fontSize))
 }
 
 function buildStyledTokens(
@@ -318,6 +310,58 @@ function buildStyledTokens(
   return styledTokens
 }
 
+interface RichLayoutItem extends RichInlineItem {
+  kind: 'text' | 'symbol'
+  renderText: string
+  fontSize: number
+  fontFamily: string
+  fill: string
+  fontStyle: 'normal' | 'italic'
+  width: number
+}
+
+const SYMBOL_PLACEHOLDER = '\u2060'
+
+function buildFontShorthand(token: Pick<StyledToken, 'fontStyle' | 'fontSize' | 'fontFamily'>) {
+  const styleParts = token.fontStyle === 'italic' ? ['italic'] : []
+
+  return [...styleParts, `${token.fontSize}px`, token.fontFamily].join(' ')
+}
+
+function buildRichLayoutItems(tokens: StyledToken[]): RichLayoutItem[] {
+  return tokens
+    .filter((token) => token.kind !== 'break')
+    .map((token) => {
+      const base = {
+        font: buildFontShorthand(token),
+        fontSize: token.fontSize,
+        fontFamily: token.fontFamily,
+        fill: token.fill,
+        fontStyle: token.fontStyle,
+      }
+
+      if (token.kind === 'symbol') {
+        return {
+          ...base,
+          kind: 'symbol' as const,
+          text: SYMBOL_PLACEHOLDER,
+          renderText: `{${token.value}}`,
+          break: 'never' as const,
+          width: measureToken(token),
+          extraWidth: measureToken(token),
+        }
+      }
+
+      return {
+        ...base,
+        kind: 'text' as const,
+        text: token.value,
+        renderText: token.value,
+        width: 0,
+      }
+    })
+}
+
 function makeTextToken(
   value: string,
   fontSize: number,
@@ -367,50 +411,66 @@ function trimLine(tokens: StyledToken[]) {
   return trimmed
 }
 
-function buildLineLayout(tokens: StyledToken[]): LineLayout {
-  if (tokens.length === 0) {
-    return {
-      segments: [],
-      height: 18,
-    }
-  }
-
-  const segments: LineSegment[] = []
-  let current: LineSegment | null = null
-  let lineHeight = 0
-
-  for (const token of tokens) {
-    const tokenText = token.kind === 'symbol' ? `{${token.value}}` : token.value
-    const tokenWidth = measureToken(token)
-    lineHeight = Math.max(lineHeight, token.fontSize * 1.18)
-
-    if (
-      current &&
-      current.fontSize === token.fontSize &&
-      current.fontFamily === token.fontFamily &&
-      current.fill === token.fill &&
-      current.fontStyle === token.fontStyle
-    ) {
-      current.text += tokenText
-      current.width += tokenWidth
-      continue
-    }
-
-    current = {
-      text: tokenText,
-      width: tokenWidth,
-      fontSize: token.fontSize,
-      fontFamily: token.fontFamily,
-      fill: token.fill,
-      fontStyle: token.fontStyle,
-    }
-    segments.push(current)
-  }
-
+function buildBlankLine(fontSize: number) {
   return {
-    segments,
-    height: lineHeight,
+    segments: [] as LineSegment[],
+    height: fontSize * 1.18,
   }
+}
+
+function layoutParagraphWithPretext(tokens: StyledToken[], width: number, fontSize: number): LineLayout[] {
+  const richItems = buildRichLayoutItems(tokens)
+  if (richItems.length === 0) {
+    return [buildBlankLine(fontSize)]
+  }
+
+  const prepared = prepareRichInline(richItems)
+  const lines: LineLayout[] = []
+
+  walkRichInlineLineRanges(prepared, width, (range) => {
+    const materialized = materializeRichInlineLineRange(prepared, range)
+    const segments: LineSegment[] = []
+    let lineHeight = fontSize * 1.18
+
+    for (const fragment of materialized.fragments) {
+      const item = richItems[fragment.itemIndex]
+      if (!item) continue
+
+      lineHeight = Math.max(lineHeight, item.fontSize * 1.18)
+      const gapSegmentWidth = fragment.gapBefore
+
+      if (gapSegmentWidth > 0) {
+        segments.push({
+          kind: 'text',
+          text: ' ',
+          pretextText: ' ',
+          width: gapSegmentWidth,
+          fontSize: item.fontSize,
+          fontFamily: item.fontFamily,
+          fill: item.fill,
+          fontStyle: item.fontStyle,
+        })
+      }
+
+      segments.push({
+        kind: item.kind,
+        text: item.kind === 'symbol' ? item.renderText : fragment.text,
+        pretextText: fragment.text,
+        width: fragment.occupiedWidth,
+        fontSize: item.fontSize,
+        fontFamily: item.fontFamily,
+        fill: item.fill,
+        fontStyle: item.fontStyle,
+      })
+    }
+
+    lines.push({
+      segments,
+      height: lineHeight,
+    })
+  })
+
+  return lines.length > 0 ? lines : [buildBlankLine(fontSize)]
 }
 
 function measureToken(token: StyledToken) {

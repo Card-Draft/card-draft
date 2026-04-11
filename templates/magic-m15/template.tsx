@@ -244,7 +244,7 @@ export default function M15Template({
         rulesText={fields.rulesText}
         flavorText={fields.flavorText}
         symbolBasePath={symbolsPath}
-        fontSize={18}
+        fontSize={24}
         background="transparent"
         stroke="transparent"
         strokeWidth={0}

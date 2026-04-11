@@ -15,10 +15,11 @@
   },
   "dependencies": {
     "@card-draft/core": "workspace:*",
+    "@chenglou/pretext": "^0.0.5",
     "konva": "^9.3.20",
-    "ses": "^1.12.0",
     "react": "^19.1.0",
     "react-konva": "^19.0.7",
+    "ses": "^1.12.0",
     "use-image": "^1.1.3",
     "zod": "^3.24.2"
   },
