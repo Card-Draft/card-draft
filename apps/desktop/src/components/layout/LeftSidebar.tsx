@@ -14,11 +14,19 @@ import {
   parseCardFields,
 } from '../../lib/cardFields'
 import { formatManaCostForInput } from '../../lib/manaCost'
+import { parseSetMetadata } from '../../lib/setMetadata'
 import { ManaCostInline } from '../cards/ManaCostInline'
 import { MiniCardPreview } from '../cards/MiniCardPreview'
 
 type SortField = 'setOrder' | 'name' | 'manaCost' | 'color' | 'type' | 'collectorNumber' | 'rarity'
 type SortDirection = 'asc' | 'desc'
+
+const RARITY_SORT_ORDER: Record<string, number> = {
+  common: 0,
+  uncommon: 1,
+  rare: 2,
+  mythic: 3,
+}
 
 const COLOR_SORT_ORDER: Record<string, number> = {
   white: 0,
@@ -173,7 +181,9 @@ export function LeftSidebar() {
           comparison = compareText(leftFields.collectorNumber ?? '', rightFields.collectorNumber ?? '')
           break
         case 'rarity':
-          comparison = compareText(leftFields.rarity ?? '', rightFields.rarity ?? '')
+          comparison =
+            (RARITY_SORT_ORDER[leftFields.rarity ?? ''] ?? 999) -
+            (RARITY_SORT_ORDER[rightFields.rarity ?? ''] ?? 999)
           break
       }
 
@@ -193,6 +203,8 @@ export function LeftSidebar() {
   const hoveredCard = hoverPreview
     ? displayCards.find((card) => card.id === hoverPreview.cardId) ?? null
     : null
+  const activeSet = availableSets.find((set) => set.id === activeSetId) ?? null
+  const hoverRarityIconSrc = parseSetMetadata(activeSet?.metadata).rarityIcon ?? ''
 
   return (
     <div className="relative flex h-full flex-col">
@@ -346,8 +358,8 @@ export function LeftSidebar() {
           className="pointer-events-none fixed z-50 hidden xl:block"
           style={{ left: hoverPreview?.left ?? 0, top: hoverPreview?.top ?? 0 }}
         >
-          <div className="w-48 rounded-2xl border border-zinc-800 bg-zinc-950/96 p-2 shadow-[0_24px_60px_rgba(0,0,0,0.45)] backdrop-blur">
-            <MiniCardPreview card={hoveredCard} className="w-full" />
+          <div className="w-56 rounded-2xl border border-zinc-800 bg-zinc-950/96 p-2 shadow-[0_24px_60px_rgba(0,0,0,0.45)] backdrop-blur">
+            <MiniCardPreview card={hoveredCard} className="w-full" artOnly rarityIconSrc={hoverRarityIconSrc} />
           </div>
         </div>
       ) : null}
