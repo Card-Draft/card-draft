@@ -66,6 +66,10 @@ const TEMPLATE_FONTS = [
   { family: BODY_ITALIC_FONT, file: 'mplantinit.ttf' },
 ] as const
 
+function normalizeTypeLineDisplayText(text: string) {
+  return text.replace(/--/g, '—')
+}
+
 interface AssetStatus {
   pending: boolean
   error: string | null
@@ -118,6 +122,7 @@ function useTemplateFonts(assetsPath: string) {
             loadedFontFamilies.add(font.family)
           }),
         )
+        await document.fonts.load('16px "Mana"')
       } catch {
         // Fall back to system fonts if bundled fonts fail to load.
       }
@@ -145,7 +150,7 @@ export default function M15Template({
   const color = frameColor(fields)
   const creature = isCreature(fields)
   const land = isLand(fields)
-  const typeLineText = typeLine(fields)
+  const typeLineText = normalizeTypeLineDisplayText(typeLine(fields))
   const symbolsPath = `${assetsPath}/symbols`
 
   const cropWidth = clamp(parseFraction(fields.artCropWidth, 1), 0.05, 1)
@@ -306,6 +311,7 @@ export default function M15Template({
         height={TEXT_BOX.h}
         rulesText={fields.rulesText}
         flavorText={fields.flavorText}
+        cardName={fields.name || 'New Card'}
         symbolBasePath={symbolsPath}
         fontSize={28}
         fontFamily={BODY_FONT}

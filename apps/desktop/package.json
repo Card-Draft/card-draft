@@ -29,6 +29,7 @@
     "jszip": "^3.10.1",
     "konva": "^9.3.20",
     "lucide-react": "^0.487.0",
+    "mana-font": "^1.18.0",
     "pdf-lib": "^1.17.1",
     "react": "^19.1.0",
     "react-advanced-cropper": "^0.19.5",

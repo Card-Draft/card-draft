@@ -8,6 +8,7 @@
   "exports": {
     ".": "./dist/index.js",
     "./db/schema": "./dist/db/schema.js",
+    "./mana": "./dist/mana.js",
     "./types": "./dist/types/index.js",
     "./export/png": "./dist/export/png.js",
     "./export/pdf": "./dist/export/pdf.js",

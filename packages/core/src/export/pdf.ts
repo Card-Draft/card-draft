@@ -21,8 +21,6 @@ export interface PrintSheetOptions {
   /** bleed in inches (adds to each card's printed size) */
   bleedInches: number
   pageSize: PageSize
-  /** DPI of the card images */
-  dpi: number
 }
 
 export async function buildPrintSheet(options: PrintSheetOptions): Promise<Uint8Array> {
@@ -32,7 +30,6 @@ export async function buildPrintSheet(options: PrintSheetOptions): Promise<Uint8
     cardsPerColumn,
     bleedInches,
     pageSize,
-    dpi,
   } = options
 
   const [pageW, pageH] = PAGE_SIZES[pageSize]!

@@ -5,6 +5,7 @@ import {
   walkRichInlineLineRanges,
   type RichInlineItem,
 } from '@chenglou/pretext/rich-inline'
+import { normalizeRulesTextSymbols } from '@card-draft/core'
 import { ManaText } from './ManaText'
 import { tokenizeManaText } from './manaTokenize'
 
@@ -23,6 +24,7 @@ interface RulesBoxProps {
   cornerRadius?: number
   fontFamily?: string
   italicFontFamily?: string
+  cardName?: string
 }
 
 interface StyledToken {
@@ -58,8 +60,41 @@ const FONT_SIZE_STEP = 0.5
 const DEFAULT_RULES_FONT_FAMILY = 'Georgia'
 const DEFAULT_RULES_ITALIC_FONT_FAMILY = 'Georgia'
 
-function normalizeRulesDisplayText(text: string) {
-  return text.replace(/--/g, '—')
+function normalizeApostrophes(text: string) {
+  return text.replace(/(\w)'(\w)/g, '$1’$2').replace(/(\w)'(?=\s|$)/g, '$1’')
+}
+
+function normalizeEllipses(text: string) {
+  return text.replace(/\.{3}/g, '…')
+}
+
+function normalizeFlavorQuotes(text: string) {
+  let open = true
+  return text.replace(/"/g, () => {
+    const quote = open ? '“' : '”'
+    open = !open
+    return quote
+  })
+}
+
+function normalizeRulesDisplayText(
+  text: string,
+  options?: { cardName?: string; flavor?: boolean },
+) {
+  let normalized = text.replace(/--/g, '—')
+  normalized = normalized.replace(/->/g, '→')
+  normalized = normalizeEllipses(normalized)
+  normalized = normalizeApostrophes(normalized)
+
+  if (options?.cardName) {
+    normalized = normalized.replace(/~/g, options.cardName)
+  }
+
+  if (options?.flavor) {
+    normalized = normalizeFlavorQuotes(normalized)
+  }
+
+  return normalized
 }
 
 export function RulesBox({
@@ -77,20 +112,34 @@ export function RulesBox({
   cornerRadius = 6,
   fontFamily = DEFAULT_RULES_FONT_FAMILY,
   italicFontFamily = DEFAULT_RULES_ITALIC_FONT_FAMILY,
+  cardName,
 }: RulesBoxProps) {
   const padding = 16
   const rightSafetyInset = Math.max(56, fontSize * 2)
   const innerWidth = width - padding * 2 - rightSafetyInset
   const innerHeight = height - padding * 2
-  const layout = fitRulesLayout({
-    rulesText,
-    flavorText,
-    width: innerWidth,
-    height: innerHeight,
-    fontSize,
-    fontFamily,
-    italicFontFamily,
-  })
+  const layout = fitRulesLayout(
+    cardName
+      ? {
+          rulesText,
+          flavorText,
+          width: innerWidth,
+          height: innerHeight,
+          fontSize,
+          fontFamily,
+          italicFontFamily,
+          cardName,
+        }
+      : {
+          rulesText,
+          flavorText,
+          width: innerWidth,
+          height: innerHeight,
+          fontSize,
+          fontFamily,
+          italicFontFamily,
+        },
+  )
   const rulesHeight = layout.rulesLines.reduce((sum, line) => sum + line.height, 0)
   const dividerVisible = layout.hasFlavor && layout.rulesLines.length > 0
   const flavorStartY = padding + rulesHeight + (dividerVisible ? 8 : 0)
@@ -206,6 +255,7 @@ function fitRulesLayout({
   fontSize,
   fontFamily,
   italicFontFamily,
+  cardName,
 }: {
   rulesText: string
   flavorText?: string | undefined
@@ -214,23 +264,46 @@ function fitRulesLayout({
   fontSize: number
   fontFamily: string
   italicFontFamily: string
+  cardName?: string
 }) {
   let currentFontSize = fontSize
 
   while (currentFontSize >= MIN_FONT_SIZE) {
-    const rulesLines = layoutText(rulesText, width, currentFontSize, {
-      baseFill: TEXT_FILL,
-      flavor: false,
-      fontFamily,
-      italicFontFamily,
-    })
-    const flavorLines = flavorText
-      ? layoutText(flavorText, width, Math.max(currentFontSize - 1.5, MIN_FONT_SIZE), {
-          baseFill: FLAVOR_FILL,
-          flavor: true,
+    const rulesOptions = cardName
+      ? {
+          baseFill: TEXT_FILL,
+          flavor: false as const,
           fontFamily,
           italicFontFamily,
-        })
+          cardName,
+        }
+      : {
+          baseFill: TEXT_FILL,
+          flavor: false as const,
+          fontFamily,
+          italicFontFamily,
+        }
+    const rulesLines = layoutText(rulesText, width, currentFontSize, rulesOptions)
+    const flavorLines = flavorText
+      ? layoutText(
+          flavorText,
+          width,
+          Math.max(currentFontSize - 1.5, MIN_FONT_SIZE),
+          cardName
+            ? {
+                baseFill: FLAVOR_FILL,
+                flavor: true as const,
+                fontFamily,
+                italicFontFamily,
+                cardName,
+              }
+            : {
+                baseFill: FLAVOR_FILL,
+                flavor: true as const,
+                fontFamily,
+                italicFontFamily,
+              },
+        )
       : []
 
     const rulesHeight = rulesLines.reduce((sum, line) => sum + line.height, 0)
@@ -265,9 +338,17 @@ function layoutText(
     flavor: boolean
     fontFamily: string
     italicFontFamily: string
+    cardName?: string
   },
 ) {
-  const styledTokens = buildStyledTokens(normalizeRulesDisplayText(text), fontSize, options)
+  const styledTokens = buildStyledTokens(
+    normalizeRulesDisplayText(
+      text,
+      options.cardName ? { cardName: options.cardName, flavor: options.flavor } : { flavor: options.flavor },
+    ),
+    fontSize,
+    options,
+  )
   const paragraphs: StyledToken[][] = []
   let currentParagraph: StyledToken[] = []
 
@@ -295,13 +376,14 @@ function buildStyledTokens(
     flavor: boolean
     fontFamily: string
     italicFontFamily: string
+    cardName?: string
   },
 ) {
-  const tokens = tokenizeManaText(text)
+  const normalizedTokens = tokenizeManaText(normalizeRulesTextSymbols(text))
   const styledTokens: StyledToken[] = []
   let reminderDepth = 0
 
-  for (const token of tokens) {
+  for (const token of normalizedTokens) {
     if (token.kind === 'symbol') {
       const reminder = !options.flavor && reminderDepth > 0
       styledTokens.push({
@@ -417,6 +499,7 @@ function makeTextToken(
     flavor: boolean
     fontFamily: string
     italicFontFamily: string
+    cardName?: string
   },
 ): StyledToken {
   return {

@@ -105,7 +105,10 @@ export const RARITY_COLORS: Record<string, string> = {
   mythic: '#e07840',
 }
 
-export type RarityGradientStop = { offset: number; color: string }
+export interface RarityGradientStop {
+  offset: number
+  color: string
+}
 
 /**
  * Gradient stops for rarity icon fill.

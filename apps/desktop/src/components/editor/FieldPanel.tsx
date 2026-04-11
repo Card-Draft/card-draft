@@ -18,12 +18,13 @@ import { ManaCostField } from './ManaCostField'
 // The M15 manifest inline — Phase 2 loads this dynamically from the template
 import manifest from '@card-draft/templates/magic-m15/manifest.json'
 import type { FieldDefinition } from '@card-draft/core/types'
+import { normalizeRulesTextSymbols } from '@card-draft/core'
 
 interface FieldPanelProps {
   cardId: string
 }
 
-export function FieldPanel({ cardId }: FieldPanelProps) {
+export function FieldPanel({ cardId: _cardId }: FieldPanelProps) {
   const fieldValues = useEditorStore((s) => s.fieldValues)
   const setFieldValue = useEditorStore((s) => s.setFieldValue)
   const initialValues = getMergedFieldValues(fieldValues)
@@ -45,9 +46,12 @@ export function FieldPanel({ cardId }: FieldPanelProps) {
 
         return (
           <div key={field.id} className="space-y-1.5">
-            <label className="text-sm font-medium text-zinc-300" htmlFor={field.id}>
-              {field.label}
-              {field.required && <span className="text-red-500 ml-0.5">*</span>}
+            <label className="flex items-center gap-1.5 text-sm font-medium text-zinc-300" htmlFor={field.id}>
+              <span>
+                {field.label}
+                {field.required && <span className="text-red-500 ml-0.5">*</span>}
+              </span>
+              {field.id === 'rulesText' ? <RulesTextHelp /> : null}
             </label>
 
             {field.type === 'select' && field.options ? (
@@ -74,6 +78,10 @@ export function FieldPanel({ cardId }: FieldPanelProps) {
                   id={field.id}
                   value={initialValues[field.id] ?? ''}
                   onChange={(event) => setFieldValue(field.id, event.target.value)}
+                  onBlur={(event) => {
+                    if (field.id !== 'rulesText') return
+                    setFieldValue(field.id, normalizeRulesTextSymbols(event.target.value))
+                  }}
                   rows={field.type === 'richtext' ? 4 : 2}
                   placeholder={defaults[field.id] ?? ''}
                   className="w-full resize-none rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-500"
@@ -95,6 +103,26 @@ export function FieldPanel({ cardId }: FieldPanelProps) {
           </div>
         )
       })}
+    </div>
+  )
+}
+
+function RulesTextHelp() {
+  return (
+    <div className="group relative inline-flex items-center">
+      <span className="inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-zinc-600 text-[10px] font-semibold text-zinc-400 transition-colors group-hover:border-zinc-400 group-hover:text-zinc-200">
+        ?
+      </span>
+      <div className="pointer-events-none absolute left-0 top-full z-20 mt-2 hidden w-64 rounded-md border border-zinc-700 bg-zinc-950/95 p-3 text-xs leading-5 text-zinc-300 shadow-xl group-hover:block">
+        <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+          Formatting Shortcuts
+        </div>
+        <div><code>--</code> becomes an em dash <code>—</code></div>
+        <div><code>-&gt;</code> becomes a right arrow <code>→</code></div>
+        <div><code>...</code> becomes an ellipsis <code>…</code></div>
+        <div><code>'</code> becomes a typographic apostrophe <code>’</code></div>
+        <div><code>~</code> becomes this card&apos;s name</div>
+      </div>
     </div>
   )
 }

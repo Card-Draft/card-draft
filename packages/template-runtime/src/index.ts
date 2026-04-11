@@ -5,6 +5,13 @@ export { CardCanvas, CARD_WIDTH, CARD_HEIGHT } from './primitives/CardCanvas'
 export { TextField } from './primitives/TextField'
 export { ArtBox } from './primitives/ArtBox'
 export { ManaText } from './primitives/ManaText'
+export {
+  buildManaSymbolAssetPath,
+  getManaCostBackground,
+  getManaFontClassName,
+  isManaCostSymbol,
+  resolveManaFontGlyphs,
+} from './primitives/manaFont'
 export { RulesBox } from './primitives/RulesBox'
 export { PtBox } from './primitives/PtBox'
 export { RarityIcon } from './primitives/RarityIcon'

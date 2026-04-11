@@ -1,13 +1,18 @@
 /**
  * ManaText — renders a string containing mana symbol codes like {W}, {2}, {T}
- * as a horizontal run of text + inline SVG symbol images on the Konva canvas.
- *
- * Example input: "Pay {2}{W}" renders: "Pay " + [2 symbol] + [W symbol]
+ * as a horizontal run of text + inline font symbols on the Konva canvas,
+ * with image assets retained as fallback.
  */
 
 import { Group, Text, Image as KonvaImage, Circle } from 'react-konva'
 import useImage from 'use-image'
-import { tokenizeManaText, type ManaToken as Token } from './manaTokenize'
+import { tokenizeManaText } from './manaTokenize'
+import {
+  buildManaSymbolAssetPath,
+  getManaCostBackground,
+  isManaCostSymbol,
+  resolveManaFontGlyphs,
+} from './manaFont'
 
 // Symbol color map for colored circles (fallback when image not loaded)
 const SYMBOL_COLORS: Record<string, string> = {
@@ -29,11 +34,141 @@ interface ManaSymbolProps {
   y: number
   size: number
   symbolBasePath: string
+  fill: string
 }
 
-function ManaSymbol({ symbol, x, y, size, symbolBasePath }: ManaSymbolProps) {
-  const src = `${symbolBasePath}/${symbol.toLowerCase()}.svg`
+function ManaFontSymbol({
+  symbol,
+  x,
+  y,
+  size,
+  fill,
+  glyphs,
+}: Omit<ManaSymbolProps, 'symbolBasePath'> & { glyphs: NonNullable<ReturnType<typeof resolveManaFontGlyphs>> }) {
+  const background = getManaCostBackground(symbol)
+  const primaryGlyph = glyphs.before ?? glyphs.after
+  const secondaryGlyph = glyphs.after
+  const symbolFill = isManaCostSymbol(symbol) ? '#111111' : fill
+
+  if (!primaryGlyph) return null
+
+  if (!isManaCostSymbol(symbol)) {
+    return (
+      <Text
+        x={x}
+        y={y + size * 0.04}
+        width={size}
+        height={size}
+        text={primaryGlyph}
+        fontSize={size * 0.92}
+        fontFamily="Mana"
+        fill={symbolFill}
+        align="center"
+        verticalAlign="middle"
+        listening={false}
+      />
+    )
+  }
+
+  const backgroundNode =
+    background.kind === 'split' ? (
+      (() => {
+        const [topColor, bottomColor] = background.colors as [string, string]
+
+        return (
+          <Circle
+            x={size / 2}
+            y={size / 2}
+            radius={size / 2}
+            fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+            fillLinearGradientEndPoint={{ x: size, y: size }}
+            fillLinearGradientColorStops={[
+              0,
+              topColor,
+              0.499,
+              topColor,
+              0.501,
+              bottomColor,
+              1,
+              bottomColor,
+            ]}
+            stroke="rgba(17, 17, 17, 0.15)"
+            strokeWidth={Math.max(0.75, size * 0.03)}
+            listening={false}
+          />
+        )
+      })()
+    ) : (
+      <Circle
+        x={size / 2}
+        y={size / 2}
+        radius={size / 2}
+        fill={background.colors[0]}
+        stroke="rgba(17, 17, 17, 0.15)"
+        strokeWidth={Math.max(0.75, size * 0.03)}
+        listening={false}
+      />
+    )
+
+  return (
+    <Group x={x} y={y} listening={false}>
+      {backgroundNode}
+      {secondaryGlyph ? (
+        <>
+          <Text
+            x={size * 0.08}
+            y={size * -0.02}
+            width={size * 0.42}
+            height={size * 0.42}
+            text={primaryGlyph}
+            fontSize={size * 0.42}
+            fontFamily="Mana"
+            fill={symbolFill}
+            align="center"
+            verticalAlign="middle"
+            listening={false}
+          />
+          <Text
+            x={size * 0.5}
+            y={size * 0.45}
+            width={size * 0.42}
+            height={size * 0.42}
+            text={secondaryGlyph}
+            fontSize={size * 0.42}
+            fontFamily="Mana"
+            fill={symbolFill}
+            align="center"
+            verticalAlign="middle"
+            listening={false}
+          />
+        </>
+      ) : (
+        <Text
+          x={0}
+          y={size * 0.08}
+          width={size}
+          height={size}
+          text={primaryGlyph}
+          fontSize={size * 0.74}
+          fontFamily="Mana"
+          fill={symbolFill}
+          align="center"
+          verticalAlign="middle"
+          listening={false}
+        />
+      )}
+    </Group>
+  )
+}
+
+function ManaSymbol({ symbol, x, y, size, symbolBasePath, fill }: ManaSymbolProps) {
+  const glyphs = resolveManaFontGlyphs(symbol)
+  const src = glyphs ? '' : buildManaSymbolAssetPath(symbolBasePath, symbol)
   const [image] = useImage(src, 'anonymous')
+
+  if (glyphs) {
+    return <ManaFontSymbol symbol={symbol} x={x} y={y} size={size} fill={fill} glyphs={glyphs} />
+  }
 
   if (image) {
     return (
@@ -135,6 +270,7 @@ export function ManaText({
           y={cursorY}
           size={symSize}
           symbolBasePath={symbolBasePath}
+          fill={fill}
         />,
       )
       cursorX += symSize + 1

@@ -90,7 +90,6 @@ export function ExportDialog() {
       cardsPerColumn: 3,
       bleedInches: 0.125,
       pageSize: 'Letter',
-      dpi: resolution.dpi,
     })
 
     const path = await window.api.export.pickSavePath({ defaultName: 'cards.pdf', ext: 'pdf' })

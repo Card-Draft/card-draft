@@ -77,6 +77,9 @@ importers:
       lucide-react:
         specifier: ^0.487.0
         version: 0.487.0(react@19.2.4)
+      mana-font:
+        specifier: ^1.18.0
+        version: 1.18.0
       pdf-lib:
         specifier: ^1.17.1
         version: 1.17.1
@@ -2672,6 +2675,9 @@ packages:
   make-fetch-happen@10.2.1:
     resolution: {integrity: sha512-NgOPbRiaQM10DYXvN3/hhGVI2M5MtITFryzBGxHM5p4wnFxsVCbxkrBrDsk+EZ5OB4jEOT7AjDxtdF+KVEFT7w==}
     engines: {node: ^12.13.0 || ^14.15.0 || >=16.0.0}
+
+  mana-font@1.18.0:
+    resolution: {integrity: sha512-PKCR5z/eeOBbox0Lu5b6A0QUWVUUa3A3LWXb9sw4N5ThIWXxRbCagXPSL4k6Cnh2Fre6Y4+2Xl819OrY7m1cUA==}
 
   matcher@3.0.0:
     resolution: {integrity: sha512-OkeDaAZ/bQCxeFAozM55PKcKU0yJMPGifLwV4Qgjitu+5MoAfSQN4lsLJeXZ1b8w0x+/Emda6MZgXS1jvsapng==}
@@ -5951,6 +5957,8 @@ snapshots:
     transitivePeerDependencies:
       - bluebird
       - supports-color
+
+  mana-font@1.18.0: {}
 
   matcher@3.0.0:
     dependencies:

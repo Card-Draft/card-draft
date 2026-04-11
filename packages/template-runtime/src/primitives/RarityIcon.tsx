@@ -2,7 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { Image as KonvaImage } from 'react-konva'
 import useImage from 'use-image'
 
-export type GradientStop = { offset: number; color: string }
+export interface GradientStop {
+  offset: number
+  color: string
+}
 
 interface RarityIconProps {
   src: string

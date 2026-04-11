@@ -1,34 +1,12 @@
 import { useState } from 'react'
 import { getMagicM15DomAssetsPath } from '../../lib/templateAssets'
 import { tokenizeCanonicalManaCost } from '../../lib/manaCost'
-
-function getManaSymbolAsset(symbol: string) {
-  const assetsPath = getMagicM15DomAssetsPath()
-  const normalized = symbol.toLowerCase()
-  const svgSymbol = normalized.replace(/\//g, '')
-  const flatSymbolMap: Record<string, string> = {
-    w: 'mana_w.png',
-    u: 'mana_u.png',
-    b: 'mana_b.png',
-    r: 'mana_r.png',
-    g: 'mana_g.png',
-    c: 'mana_c.png',
-    t: 'mana_t.png',
-  }
-
-  const flatAsset = flatSymbolMap[normalized]
-  if (flatAsset) {
-    return {
-      src: `${assetsPath}/symbols-flat/${flatAsset}`,
-      className: 'h-3.5 w-3.5',
-    }
-  }
-
-  return {
-    src: `${assetsPath}/symbols/${svgSymbol}.svg`,
-    className: 'h-3.5 w-3.5',
-  }
-}
+import {
+  buildManaSymbolAssetPath,
+  getManaFontClassName,
+  isManaCostSymbol,
+  resolveManaFontGlyphs,
+} from '@card-draft/template-runtime'
 
 function ManaSymbolFallback({ symbol }: { symbol: string }) {
   return (
@@ -56,13 +34,10 @@ export function ManaCostInline({ cost }: { cost: string }) {
           )
         }
 
-        const asset = getManaSymbolAsset(token.value)
         return (
           <InlineManaSymbol
             key={`${token.kind}-${token.value}-${index}`}
             symbol={token.value}
-            src={asset.src}
-            className={asset.className}
           />
         )
       })}
@@ -72,25 +47,36 @@ export function ManaCostInline({ cost }: { cost: string }) {
 
 function InlineManaSymbol({
   symbol,
-  src,
-  className,
 }: {
   symbol: string
-  src: string
-  className: string
 }) {
+  const className = getManaFontClassName(symbol)
+  const glyphs = resolveManaFontGlyphs(symbol)
+
+  if (className && glyphs) {
+    return (
+      <span
+        aria-label={`{${symbol}}`}
+        className={`ms ${isManaCostSymbol(symbol) ? 'ms-cost' : ''} ms-${className} text-[15px] leading-none`}
+        title={`{${symbol}}`}
+      />
+    )
+  }
+
+  return (
+    <InlineManaImageFallback
+      symbol={symbol}
+      src={buildManaSymbolAssetPath(`${getMagicM15DomAssetsPath()}/symbols`, symbol)}
+    />
+  )
+}
+
+function InlineManaImageFallback({ symbol, src }: { symbol: string; src: string }) {
   const [failed, setFailed] = useState(false)
 
   if (failed) {
     return <ManaSymbolFallback symbol={symbol} />
   }
 
-  return (
-    <img
-      src={src}
-      alt={`{${symbol}}`}
-      className={className}
-      onError={() => setFailed(true)}
-    />
-  )
+  return <img src={src} alt={`{${symbol}}`} className="h-3.5 w-3.5" onError={() => setFailed(true)} />
 }
